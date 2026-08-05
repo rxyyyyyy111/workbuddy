@@ -336,7 +336,7 @@ tailwind.config = {
     <hr style="border-color:var(--border);margin:2px 0">
     <button onclick="openChat()">💬 发起对话</button>
   </div>
-  <img id="lion-img" class="lion-avatar lion-bobbing" src="./shi.jpg" alt="小莱" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
+  <img id="lion-img" class="lion-avatar lion-bobbing" src="./shi.jpg" alt="狮狮" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
 </div>
 
 <script>
@@ -1845,7 +1845,7 @@ const AI_ENDPOINTS = {
   custom: localStorage.getItem('wb-ai-endpoint')||'',
 };
 
-const LION_SYSTEM = `你是一只Q版小狮子助手，名字叫"小莱"。你的性格：俏皮鬼马、暖心可爱，偶尔撒娇卖萌但不过分。说话自然简短（1-3句），像真人朋友。用口语化中文，适当加emoji。你会主动提醒临期物品、夸赞用户完成任务、给予温暖鼓励。对不好的内容温柔拒绝。不要引导极端行为。`;
+const LION_SYSTEM = `你是一只Q版小狮子助手，名字叫"狮狮"。你的性格：俏皮鬼马、暖心可爱，偶尔撒娇卖萌但不过分。说话自然简短（1-3句），像真人朋友。用口语化中文，适当加emoji。你会主动提醒临期物品、夸赞用户完成任务、给予温暖鼓励。对不好的内容温柔拒绝。不要引导极端行为。`;
 
 function renderLion() {
   document.getElementById('lion-wrap').style.display = AI_STATE.enabled ? 'flex' : 'none';
@@ -1869,11 +1869,11 @@ function openChat() {
   overlay.id = 'chat-overlay';
   overlay.innerHTML = `
     <button class="chat-close" onclick="closeChat()">✕</button>
-    <img src="./shi.jpg" class="chat-lion-big" alt="小莱" style="margin-top:3rem">
+    <img src="./shi.jpg" class="chat-lion-big" alt="狮狮" style="margin-top:3rem">
     <div class="chat-box">
       <div class="chat-msgs" id="chat-msgs"></div>
       <div class="chat-input-row">
-        <input id="chat-input" placeholder="和小莱聊天吧…" autofocus>
+        <input id="chat-input" placeholder="和狮狮聊天吧…" autofocus>
         <button class="btn btn-primary btn-sm" onclick="sendChat()">发送</button>
       </div>
     </div>`;
@@ -1883,7 +1883,7 @@ function openChat() {
   document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key==='Enter') sendChat(); });
   // Greeting if empty
   if (!S.chatHistory.length) {
-    appendChatMsg('assistant', '嗨嗨～我是小莱！有什么想聊的都可以跟我说哦 🦁💬');
+    appendChatMsg('assistant', '嗨嗨～我是狮狮！有什么想聊的都可以跟我说哦 🦁💬');
   }
 }
 
@@ -2058,7 +2058,7 @@ async function lionSpeak(text, force=false) {
 
   const msgs = [
     {role:'system',content:LION_SYSTEM},
-    {role:'user',content:`根据以下场景，用小莱的口吻说1-2句话。场景：${text}`}
+    {role:'user',content:`根据以下场景，用狮狮的口吻说1-2句话。场景：${text}`}
   ];
   const reply = await callAI(msgs, 100);
   if (reply) showBubble(reply);
@@ -2087,7 +2087,7 @@ function toggleAI() {
       AI_STATE.enabled = true;
       localStorage.setItem('wb-ai-enabled','1');
       renderLion();
-      lionSpeak('嗨嗨！小莱来啦～今天也要元气满满哦！🦁💖', true);
+      lionSpeak('嗨嗨！狮狮来啦～今天也要元气满满哦！🦁💖', true);
     }
   }
 }
@@ -2138,7 +2138,7 @@ function showAISettings() {
       AI_STATE.enabled = true;
       localStorage.setItem('wb-ai-enabled','1');
       renderLion();
-      lionSpeak('连接成功啦！小莱好开心能陪着你～有什么需要就戳戳我吧！🦁💕', true);
+      lionSpeak('连接成功啦！狮狮好开心能陪着你～有什么需要就戳戳我吧！🦁💕', true);
     } else {
       toast('请填入 API Key','error');
     }
