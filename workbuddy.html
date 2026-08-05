@@ -2171,111 +2171,66 @@ function lionOnAction(event) {
   lionSpeak(event.prompt, event.force);
 }
 
-// Wrapper: ctxFn receives the original function's arguments, returns a prompt string
-function withLionCtx(fn, ctxFn, force) {
-  return function() {
-    const r = fn.apply(this, arguments);
-    const prompt = typeof ctxFn==='function' ? ctxFn(arguments) : ctxFn;
-    lionOnAction({prompt, force});
-    return r;
-  };
+function withLion(fn, prompt, force) {
+  return function() { const r = fn.apply(this, arguments); lionOnAction({prompt, force}); return r; };
 }
 
-// Calendar — pass todo text
-const _addTodoOrig = addTodo;
-addTodo = function() {
-  const r = _addTodoOrig();
-  const last = S.todos[S.todos.length-1];
-  lionOnAction({prompt:last?`用户添加了待办"${last.text}"。夸一下行动力`:'用户添加了待办'});
-  return r;
-};
-togTodo = withLionCtx(togTodo, () => {
-  const sel = S.todos.filter(t=>t.date===S.selDate);
-  const done = sel.filter(t=>t.done).length;
-  return done===sel.length&&sel.length>0 ? '用户完成了今天所有待办！狠狠夸！🎉' : '用户勾选/取消了一个待办';
-});
-delTodo = withLionCtx(delTodo, '用户删除了一个待办，表示理解');
+// Calendar
+addTodo = withLion(addTodo, '用户刚添加了新待办！夸ta行动力满满，鼓励今天完成它 💪');
+togTodo = withLion(togTodo, '用户勾选/取消了待办。如果完成了就夸，取消了就说没关系');
+delTodo = withLion(delTodo, '用户删除了一个待办，表示理解');
 
-// Tasks — pass task name, checkin info
-const _addCheckinOrig = addCheckin;
-addCheckin = function(id) {
-  const r = _addCheckinOrig(id);
-  const t = S.tasks.find(x=>x.id===id);
-  if (t) {
-    const streak = calcStreak(t.checkins||[]);
-    lionOnAction({prompt:`用户对任务"${t.name}"完成了打卡！连续打卡${streak}天。根据连续天数热情夸赞，连续7天以上要特别激动`});
-  }
-  return r;
-};
-addTask = withLionCtx(addTask, () => {
-  const last = S.tasks[S.tasks.length-1];
-  return last ? `用户创建了新任务"${last.name}"，分类"${last.category||'默认'}"。鼓励用户，提醒ta记得打卡` : '用户创建了新任务';
-});
-delTask = withLionCtx(delTask, '用户删除了一个任务，表示理解');
-delCheckin = withLionCtx(delCheckin, '用户删除了一条打卡记录，轻轻提醒要持之以恒哦');
+// Tasks
+addCheckin = withLion(addCheckin, '用户完成了一次打卡！！狠狠夸赞，用俏皮话，夸ta坚持得好');
+addTask = withLion(addTask, '用户创建了新任务，鼓励ta，提醒记得来打卡哦');
+delTask = withLion(delTask, '用户删除了一个任务，表示理解');
+delCheckin = withLion(delCheckin, '用户删除了打卡记录，温柔提醒要持之以恒');
 
 // Countdown
-addAnn = withLionCtx(addAnn, () => {
-  const last = S.anniversaries[S.anniversaries.length-1];
-  return last ? `用户添加了纪念日"${last.name}"，日期${last.date}，模式${last.mode==='countup'?'正数':'倒计时'}。暖心地回应这个日子` : '用户添加了纪念日';
-});
-delAnn = withLionCtx(delAnn, '用户删除了一个纪念日');
+addAnn = withLion(addAnn, '用户添加了一个纪念日。温暖回应这个特别的日子');
+delAnn = withLion(delAnn, '用户删除了一个纪念日');
 
 // Finance
-addTx = withLionCtx(addTx, () => {
-  const last = S.transactions[S.transactions.length-1];
-  if (!last) return '用户记了一笔账';
-  const type = last.type==='income'?'收入':'支出';
-  return `用户记了一笔${type}：${last.category} ¥${last.amount.toFixed(2)}${last.note?'，备注：'+last.note:''}。如果是收入要恭喜，如果支出较大要温柔提醒省钱，小额支出就随便聊聊`;
-});
-delTx = withLionCtx(delTx, '用户删除了一条记账记录');
+addTx = withLion(addTx, '用户刚记了一笔账。如果是收入就恭喜发财，如果是支出就温柔提醒理性消费，大额支出要惊讶一下');
+delTx = withLion(delTx, '用户删除了一条记账记录');
 
 // Archive
-addArc = withLionCtx(addArc, () => {
-  const last = S.archives[S.archives.length-1];
-  return last ? `用户创建了新档案"${last.name}"。像侦探整理线索一样，俏皮回应` : '用户创建了新档案';
-});
-const _addClueOrig = addClue;
-addClue = function() {
-  const r = _addClueOrig();
-  const a = S.archives.find(x=>x.id===S.archiveId);
-  if (a) {
-    const lastClue = (a.clues||[])[a.clues.length-1];
-    lionOnAction({prompt:lastClue?`用户在档案"${a.name}"里添加了线索${lastClue.text?'："'+lastClue.text.slice(0,100)+'"':''}。像侦探发现了新证据一样回应`:''});
-  }
-  return r;
-};
-delArc = withLionCtx(delArc, '用户删除了一个档案');
-delClue = withLionCtx(delClue, '用户删除了一条线索');
+addArc = withLion(addArc, '用户创建了新档案，像侦探开了新案子一样俏皮回应');
+addClue = withLion(addClue, '用户在档案里添加了新线索！像侦探发现了证据一样兴奋');
+delArc = withLion(delArc, '用户删除了一个档案');
+delClue = withLion(delClue, '用户删除了一条线索');
 
-// Diary — THE MOST IMPORTANT: read content and mood
+// Diary — capture content before modal closes
 const _addDiaryOrig = addDiary;
 addDiary = function() {
+  // Before opening the modal, we can't read content yet.
+  // We'll hook the save by wrapping the modal function temporarily
+  const _modalOrig = modal;
+  let diaryCaptured = false;
+  modal = function(title, body, onSave, wide) {
+    const _onSaveOrig = onSave;
+    return _modalOrig(title, body, function() {
+      _onSaveOrig();
+      // After save, read the last diary entry
+      const last = S.diaries[S.diaries.length-1];
+      if (last && !diaryCaptured) {
+        diaryCaptured = true;
+        const moodLabel = {'😊':'开心','💪':'充实','🤔':'思考','😴':'疲惫','😢':'难过','😡':'生气'};
+        lionOnAction({prompt:`用户刚写了一篇日记：\n心情：${moodLabel[last.mood]||last.mood||'未知'}\n标题：${last.title||'无标题'}\n内容：${(last.content||'').slice(0,300)}\n\n请像朋友看了日记一样自然回应。针对日记内容聊天，不要复述。悲伤就安慰，开心就一起开心，困惑就温柔开导。这是最重要的互动，要真诚、有温度。`, force:true});
+      }
+      modal = _modalOrig; // restore
+    }, wide);
+  };
   const r = _addDiaryOrig();
-  const last = S.diaries[S.diaries.length-1];
-  if (last) {
-    const moodLabel = {'😊':'开心','💪':'充实','🤔':'思考','😴':'疲惫','😢':'难过','😡':'生气'};
-    lionOnAction({prompt:`用户刚写了一篇日记：
-心情：${moodLabel[last.mood]||last.mood||'未知'}
-标题：${last.title||'无标题'}
-内容：${(last.content||'').slice(0,300)}
-
-请像朋友看了日记一样自然地回应。针对日记内容聊天，不要复述。如果内容悲伤就安慰，如果开心就一起开心，如果有困惑就温柔开导。这是最重要的互动，要真诚、有温度。`, force:true});
-  }
+  modal = _modalOrig; // restore if addDiary failed early
   return r;
 };
-delDiary = withLionCtx(delDiary, '用户删除了一篇日记，轻轻问一下是不是不开心');
+delDiary = withLion(delDiary, '用户删除了一篇日记，温柔地问一下是不是今天心情不太好');
 
 // Wishes
-const _addWishOrig = addWish;
-addWish = function() {
-  const r = _addWishOrig();
-  const last = S.wishes[S.wishes.length-1];
-  lionOnAction({prompt:last?`用户许了心愿"${last.name}"${last.conditions.length?'，有'+last.conditions.length+'个条件项':''}。鼓励用户，表达相信ta一定能实现`:'用户许了心愿'});
-  return r;
-};
-delWish = withLionCtx(delWish, '用户删除了一个心愿');
-addCond = withLionCtx(addCond, '用户为心愿添加了条件项，鼓励一步步来');
+addWish = withLion(addWish, '用户许了一个心愿！鼓励ta，说狮狮相信一定会实现的 ✨');
+delWish = withLion(delWish, '用户删除了一个心愿');
+addCond = withLion(addCond, '用户为心愿添加了条件项，鼓励一步步来，每步都算数');
 const _togCondOrig = togCond;
 togCond = function(wishId, condId) {
   const r = _togCondOrig(wishId, condId);
@@ -2283,22 +2238,18 @@ togCond = function(wishId, condId) {
   if (w) {
     const done = (w.conditions||[]).filter(c=>c.done).length;
     const total = (w.conditions||[]).length;
-    const justDone = (w.conditions||[]).find(c=>c.id===condId);
-    if (justDone && justDone.done) {
-      lionOnAction({prompt:`用户完成了心愿"${w.name}"的条件"${justDone.text}"！进度${done}/${total}。${done===total?'全部完成了！！要疯狂庆祝🎉🎉🎉':'热情夸赞，鼓励继续加油'}`});
+    if (done===total) {
+      lionOnAction({prompt:`用户完成了心愿"${w.name}"的全部${total}个条件！！全部完成了！！疯狂庆祝🎉🎉🎉 说狮狮好骄傲`});
     }
   }
   return r;
 };
-addWishMsg = withLionCtx(addWishMsg, '用户给心愿留了言，回应一下');
+addWishMsg = withLion(addWishMsg, '用户给心愿留了言，暖心地回应一下');
 
 // Warehouse
-addWHItem = withLionCtx(addWHItem, () => {
-  const last = S.warehouseItems[S.warehouseItems.length-1];
-  return last ? `用户往仓库"${last.mainCat}"添加了"${last.name}"${last.expiryDate?'，过期日'+last.expiryDate:''}。${last.expiryDate?'提醒记得在过期前用掉哦':''}` : '用户添加了物品';
-});
-delWHItem = withLionCtx(delWHItem, '用户删除了一个物品');
-addWHSubCat = withLionCtx(addWHSubCat, '用户添加了仓库分类');
+addWHItem = withLion(addWHItem, '用户往仓库添加了物品。如果有过期日就提醒记得在过期前用掉');
+delWHItem = withLion(delWHItem, '用户从仓库删除了一个物品');
+addWHSubCat = withLion(addWHSubCat, '用户添加了仓库分类');
 
 // Warehouse expiry check on enter
 const _origRenderWH = renderWH;
@@ -2313,7 +2264,7 @@ renderWH = function() {
     });
     if (expItems.length) {
       const names = expItems.map(i=>`${i.name}(${i.expiryDate})`).join('、');
-      lionOnAction({prompt:`仓库有${expItems.length}件临期/过期物品：${names}。用俏皮着急的语气提醒用户快处理，狮狮替你着急了`, important:true, force:true});
+      lionOnAction({prompt:`仓库有${expItems.length}件临期/过期物品：${names}。用俏皮着急的语气提醒用户快处理，狮狮替你着急了！`, important:true, force:true});
     }
   }
 };
