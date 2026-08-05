@@ -1944,9 +1944,12 @@ async function sendChat() {
 }
 
 // ===== Lion Drag =====
+var _lionDragInited = false;
 function initLionDrag() {
-  const wrap = document.getElementById('lion-wrap');
+  if (_lionDragInited) return;
+  var wrap = document.getElementById('lion-wrap');
   if (!wrap) return;
+  _lionDragInited = true;
 
   // Restore saved position
   if (lionSavedPos.x) {
@@ -2030,40 +2033,46 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('#lion-wrap')) closeLionMenu();
 });
 
-// AI API call
-async function callAI(messages, maxTokens=120) {
-  if (!AI_STATE.enabled||!AI_STATE.apiKey) return null;
-  const endpoint = AI_ENDPOINTS[AI_STATE.provider]||AI_ENDPOINTS.custom;
+// AI API call — safe version
+async function callAI(messages, maxTokens) {
+  maxTokens = maxTokens || 120;
+  if (!AI_STATE.enabled || !AI_STATE.apiKey) return null;
+  var endpoint = AI_ENDPOINTS[AI_STATE.provider] || AI_ENDPOINTS.custom;
   if (!endpoint) return null;
   try {
-    const res = await fetch(endpoint, {
+    var controller = new AbortController();
+    var timeoutId = setTimeout(function() { controller.abort(); }, 10000);
+    var res = await fetch(endpoint, {
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':`Bearer ${AI_STATE.apiKey}`},
-      body:JSON.stringify({model:AI_STATE.model,messages,max_tokens:maxTokens,temperature:0.9}),
-      signal:AbortSignal.timeout(10000)
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+AI_STATE.apiKey},
+      body:JSON.stringify({model:AI_STATE.model,messages:messages,max_tokens:maxTokens,temperature:0.9}),
+      signal:controller.signal
     });
+    clearTimeout(timeoutId);
     if (!res.ok) return null;
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content?.trim()||null;
+    var data = await res.json();
+    return (data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'').trim()||null;
   } catch(e) { return null; }
 }
 
 // Lion speaks
-async function lionSpeak(text, force=false) {
-  if (!AI_STATE.enabled||!text) return;
-  if (!AI_STATE.apiKey) { showBubble(text); return; }
-  const now = Date.now();
-  const cooldown = AI_STATE.talkLevel==='high'?8000:AI_STATE.talkLevel==='mid'?20000:60000;
-  if (!force && now-AI_STATE.lastSpoke<cooldown) return;
-  AI_STATE.lastSpoke = now;
+async function lionSpeak(text, force) {
+  try {
+    if (!AI_STATE.enabled||!text) return;
+    if (!AI_STATE.apiKey) { showBubble(text); return; }
+    var now = Date.now();
+    var cooldown = AI_STATE.talkLevel==='high'?8000:AI_STATE.talkLevel==='mid'?20000:60000;
+    if (!force && now-AI_STATE.lastSpoke<cooldown) return;
+    AI_STATE.lastSpoke = now;
 
-  const msgs = [
-    {role:'system',content:LION_SYSTEM},
-    {role:'user',content:`场景：${text}\n\n请以狮狮的身份，根据场景自然回应。要有情绪——该夸就夸、该安慰就安慰、该提醒就提醒。不要复述场景，要像朋友聊天一样。`}
-  ];
-  const reply = await callAI(msgs, 100);
-  if (reply) showBubble(reply);
-  else showBubble(text); // fallback to plain text
+    var msgs = [
+      {role:'system',content:LION_SYSTEM},
+      {role:'user',content:'场景：'+text+'\n\n请以狮狮的身份，根据场景自然回应。'}
+    ];
+    var reply = await callAI(msgs, 100);
+    if (reply) showBubble(reply);
+    else showBubble(text);
+  } catch(e) { showBubble(text); }
 }
 
 function showBubble(text) {
@@ -2088,7 +2097,7 @@ function toggleAI() {
       AI_STATE.enabled = true;
       localStorage.setItem('wb-ai-enabled','1');
       renderLion();
-      lionSpeak('嗨嗨！狮狮来啦～今天也要元气满满哦！🦁💖', true);
+      try { lionSpeak('嗨嗨！狮狮来啦～今天也要元气满满哦！🦁💖', true); } catch(e) {}
     }
   }
 }
@@ -2139,7 +2148,7 @@ function showAISettings() {
       AI_STATE.enabled = true;
       localStorage.setItem('wb-ai-enabled','1');
       renderLion();
-      lionSpeak('连接成功啦！狮狮好开心能陪着你～有什么需要就戳戳我吧！🦁💕', true);
+      try { lionSpeak('连接成功啦！狮狮来咯～戳我可以聊天哦 🦁💕', true); } catch(e) {}
     } else {
       toast('请填入 API Key','error');
     }
@@ -2186,10 +2195,16 @@ safeWrap('addWHItem', '用户添加了物品');
 
 // Init lion drag
 function renderLion() {
-  var wrap = document.getElementById('lion-wrap');
-  if (wrap) wrap.style.display = AI_STATE.enabled ? 'flex' : 'none';
-  updateAIToggle();
-  if (AI_STATE.enabled) { updateLionLevelUI(); initLionDrag(); }
+  try {
+    var wrap = document.getElementById('lion-wrap');
+    if (!wrap) return;
+    wrap.style.display = AI_STATE.enabled ? 'flex' : 'none';
+    updateAIToggle();
+    if (AI_STATE.enabled) {
+      updateLionLevelUI();
+      initLionDrag();
+    }
+  } catch(e) { console.log('renderLion error:', e); }
 }
 
 // ==================== UTILS ====================
