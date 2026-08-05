@@ -1991,7 +1991,7 @@ async function sendChat() {
   }
 }
 
-// ===== Lion Drag =====
+// ===== Lion Drag (safe for touch) =====
 var _lionDragInited = false;
 function initLionDrag() {
   if (_lionDragInited) return;
@@ -1999,7 +1999,6 @@ function initLionDrag() {
   if (!wrap) return;
   _lionDragInited = true;
 
-  // Restore saved position
   if (lionSavedPos.x) {
     wrap.style.right = 'auto';
     wrap.style.bottom = 'auto';
@@ -2007,48 +2006,42 @@ function initLionDrag() {
     wrap.style.top = lionSavedPos.y + 'px';
   }
 
-  wrap.addEventListener('pointerdown', e => {
-    if (e.target.closest('#lion-menu') || e.target.closest('.lion-bubble')) return;
+  wrap.addEventListener('pointerdown', function(e) {
+    if (e.target.closest('#lion-menu') || e.target.closest('.lion-bubble') || e.target.closest('button')) return;
     lionDrag.active = true;
     lionDrag.moved = false;
     lionDrag.startX = e.clientX;
     lionDrag.startY = e.clientY;
-    const rect = wrap.getBoundingClientRect();
+    var rect = wrap.getBoundingClientRect();
     lionDrag.origX = rect.left;
     lionDrag.origY = rect.top;
-    wrap.setPointerCapture(e.pointerId);
     wrap.classList.add('dragging');
+    e.preventDefault();
   });
 
-  wrap.addEventListener('pointermove', e => {
+  document.addEventListener('pointermove', function(e) {
     if (!lionDrag.active) return;
-    const dx = e.clientX - lionDrag.startX;
-    const dy = e.clientY - lionDrag.startY;
+    var dx = e.clientX - lionDrag.startX;
+    var dy = e.clientY - lionDrag.startY;
     if (Math.abs(dx) > 8 || Math.abs(dy) > 8) lionDrag.moved = true;
     if (!lionDrag.moved) return;
     wrap.style.right = 'auto';
     wrap.style.bottom = 'auto';
-    const nx = Math.max(0, Math.min(window.innerWidth - 80, lionDrag.origX + dx));
-    const ny = Math.max(0, Math.min(window.innerHeight - 80, lionDrag.origY + dy));
+    var nx = Math.max(0, Math.min(window.innerWidth - 80, lionDrag.origX + dx));
+    var ny = Math.max(0, Math.min(window.innerHeight - 80, lionDrag.origY + dy));
     wrap.style.left = nx + 'px';
     wrap.style.top = ny + 'px';
   });
 
-  wrap.addEventListener('pointerup', e => {
+  document.addEventListener('pointerup', function(e) {
+    if (!lionDrag.active) return;
     wrap.classList.remove('dragging');
     if (lionDrag.moved) {
-      const rect = wrap.getBoundingClientRect();
+      var rect = wrap.getBoundingClientRect();
       localStorage.setItem('wb-lion-pos', JSON.stringify({ x: rect.left, y: rect.top }));
-    }
-    lionDrag.active = false;
-    // If didn't move (was a click), toggle menu
-    if (!lionDrag.moved) {
+    } else {
       toggleLionMenu();
     }
-  });
-
-  wrap.addEventListener('pointercancel', () => {
-    wrap.classList.remove('dragging');
     lionDrag.active = false;
   });
 }
