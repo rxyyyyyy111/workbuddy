@@ -1952,11 +1952,11 @@ async function sendChat() {
     ...S.chatHistory.slice(-20).map(m => ({ role: m.role, content: m.content })),
   ];
 
-  const reply = await callAI(msgs, 200);
+  var reply = await callAI(msgs, 200);
   if (reply) {
     appendChatMsg('assistant', reply);
   } else {
-    appendChatMsg('assistant', '唔…网络好像不太稳定，等会再试试嘛～🦁💦');
+    appendChatMsg('assistant', '唔…好像出了点问题 🦁💦\n错误：'+(_lastAIError||'未知'));
   }
 }
 
@@ -2050,15 +2050,16 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('#lion-wrap')) closeLionMenu();
 });
 
-// AI API call — safe version
+// AI API call — with error logging
+var _lastAIError = '';
 async function callAI(messages, maxTokens) {
   maxTokens = maxTokens || 120;
-  if (!AI_STATE.enabled || !AI_STATE.apiKey) return null;
+  if (!AI_STATE.enabled || !AI_STATE.apiKey) { _lastAIError = 'AI未启用或未设置Key'; return null; }
   var endpoint = AI_ENDPOINTS[AI_STATE.provider] || AI_ENDPOINTS.custom;
-  if (!endpoint) return null;
+  if (!endpoint) { _lastAIError = '未配置API端点'; return null; }
   try {
     var controller = new AbortController();
-    var timeoutId = setTimeout(function() { controller.abort(); }, 10000);
+    var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
     var model = AI_STATE.model || AI_DEFAULT_MODELS[AI_STATE.provider] || 'gpt-4o-mini';
     var res = await fetch(endpoint, {
       method:'POST',
@@ -2067,10 +2068,20 @@ async function callAI(messages, maxTokens) {
       signal:controller.signal
     });
     clearTimeout(timeoutId);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      var errText = await res.text().catch(function(){return '';});
+      _lastAIError = 'HTTP '+res.status+': '+errText.slice(0,200);
+      return null;
+    }
     var data = await res.json();
-    return (data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'').trim()||null;
-  } catch(e) { return null; }
+    var content = (data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'').trim();
+    if (!content) { _lastAIError = 'API返回空内容: '+JSON.stringify(data).slice(0,200); return null; }
+    _lastAIError = '';
+    return content;
+  } catch(e) {
+    _lastAIError = e.message||'网络错误';
+    return null;
+  }
 }
 
 // Lion speaks
