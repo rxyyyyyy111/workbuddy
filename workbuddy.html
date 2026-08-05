@@ -217,22 +217,33 @@ tailwind.config = {
   .ai-on { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
   .ai-off { background: transparent; color: var(--sub); }
   .dark .ai-on { background: #1e3a5f; color: #93c5fd; border-color: #3b6daa; }
+
+  /* Sidebar transition & mobile centering */
+  #sidebar { transition: width .25s ease; }
+  @media (max-width: 1023px) {
+    .nav-item { justify-content: center; padding: .65rem .3rem !important; }
+    .nav-item span { font-size: 1.1rem; }
+  }
+  @media (min-width: 1024px) {
+    #sidebar { width: 14rem !important; }
+    main { margin-left: 14rem !important; }
+  }
 </style>
 </head>
 <body class="min-h-screen">
 
 <!-- ==================== SIDEBAR (Desktop) ==================== -->
-<aside id="sidebar" class="hidden lg:flex flex-col fixed left-0 top-0 h-full w-56 p-4 z-50" style="background:var(--card);border-right:1px solid var(--border);">
-  <div class="flex items-center gap-2 px-2 mb-6 mt-1">
-    <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-sm" style="background:var(--accent);">W</div>
-    <span class="font-bold text-lg" style="color:var(--text)">WorkBuddy</span>
+<aside id="sidebar" class="flex flex-col fixed left-0 top-0 h-full z-50 transition-all p-2 lg:p-4" style="background:var(--card);border-right:1px solid var(--border);width:3.5rem;overflow-x:hidden;" onmouseenter="expandSidebar()" onmouseleave="collapseSidebar()">
+  <div class="flex items-center gap-2 px-1 lg:px-2 mb-4 lg:mb-6 mt-1 flex-shrink-0">
+    <div class="w-7 h-7 lg:w-8 lg:h-8 rounded-lg lg:rounded-xl flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0" style="background:var(--accent);">W</div>
+    <span class="font-bold text-base lg:text-lg whitespace-nowrap opacity-0 lg:opacity-100 transition-opacity" style="color:var(--text)" id="sidebar-brand">WorkBuddy</span>
   </div>
-  <nav class="flex flex-col gap-1 flex-1" id="nav-desktop"></nav>
-  <button onclick="toggleTheme()" class="btn btn-ghost btn-sm w-full mt-2" id="theme-btn-desktop"></button>
+  <nav class="flex flex-col gap-0.5 lg:gap-1 flex-1 overflow-y-auto" id="nav-desktop"></nav>
+  <button onclick="toggleTheme()" class="flex items-center justify-center lg:justify-start gap-2 p-2 rounded-xl transition-all flex-shrink-0 text-sm" style="background:transparent;color:var(--text);border:1.5px solid var(--border);cursor:pointer;font-family:inherit" id="theme-btn-desktop"></button>
 </aside>
 
 <!-- ==================== MAIN CONTENT ==================== -->
-<main id="main" class="lg:ml-56 min-h-screen pb-24 lg:pb-8 p-4 lg:p-6">
+<main id="main" class="min-h-screen p-3 lg:p-6" style="margin-left:3.5rem">
   <header class="flex items-center justify-between mb-5 lg:mb-6">
     <div>
       <h1 id="page-title" class="text-xl lg:text-2xl font-bold"></h1>
@@ -241,7 +252,6 @@ tailwind.config = {
     <div class="flex items-center gap-2">
       <span id="today-clock" class="text-sm hidden sm:inline" style="color:var(--sub)"></span>
       <button onclick="toggleAI()" class="ai-toggle ai-off" id="ai-toggle-btn" title="AI 助手">🤖 AI</button>
-      <button onclick="toggleTheme()" class="btn btn-ghost btn-sm lg:hidden" id="theme-btn-mobile">🌙</button>
     </div>
   </header>
 
@@ -254,10 +264,6 @@ tailwind.config = {
   <div id="panel-wishes" class="panel hidden"></div>
   <div id="panel-warehouse" class="panel hidden"></div>
 </main>
-
-<!-- ==================== MOBILE BOTTOM NAV ==================== -->
-<nav id="bottom-nav" class="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-around py-2 px-1"
-  style="background:var(--card);border-top:1px solid var(--border);"></nav>
 
 <div id="modal-container"></div>
 <div id="toast-container"></div>
@@ -344,9 +350,9 @@ const SUBS = {
 
 function buildNav() {
   const d = document.getElementById('nav-desktop');
-  const m = document.getElementById('bottom-nav');
-  d.innerHTML = NAV.map(n => `<div class="nav-item${S.panel===n.id?' active':''}" onclick="go('${n.id}')" data-nav="${n.id}"><span class="text-lg">${n.icon}</span><span>${n.label}</span></div>`).join('');
-  m.innerHTML = NAV.map(n => `<div class="flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl cursor-pointer transition-all font-medium text-xs" style="color:${S.panel===n.id?'var(--accent)':'var(--sub)'}" onclick="go('${n.id}')" data-nav="${n.id}"><span class="text-lg">${n.icon}</span><span>${n.label}</span></div>`).join('');
+  d.innerHTML = NAV.map(n => `<div class="nav-item${S.panel===n.id?' active':''}" onclick="go('${n.id}')" data-nav="${n.id}" title="${n.label}">
+    <span class="text-lg flex-shrink-0">${n.icon}</span><span class="hidden lg:inline whitespace-nowrap">${n.label}</span>
+  </div>`).join('');
 }
 
 function go(id, animate=true) {
@@ -359,8 +365,19 @@ function go(id, animate=true) {
   document.getElementById('page-title').textContent = n.icon+' '+n.label;
   document.getElementById('page-sub').textContent = SUBS[id];
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.nav===id));
-  document.querySelectorAll('#bottom-nav [data-nav]').forEach(el => el.style.color = el.dataset.nav===id ? 'var(--accent)' : 'var(--sub)');
   render(id);
+  // Lion responds to module switch occasionally
+  const prompts = {
+    calendar:'用户打开了日历，准备规划日程',
+    tasks:'用户打开了任务栏，准备打卡或管理任务',
+    countdown:'用户打开了纪念日，在回顾或期待重要日子',
+    finance:'用户打开了记账本，在管理财务',
+    archive:'用户打开了档案馆，在整理记忆',
+    diary:'用户打开了日记本，准备记录心情',
+    wishes:'用户打开了心愿单，在追逐梦想',
+    warehouse:'用户打开了仓库，在查看物品库存',
+  };
+  if (prompts[id]) lionOnAction({prompt:prompts[id]});
 }
 
 // ==================== THEME ====================
@@ -372,8 +389,29 @@ function toggleTheme() {
 }
 function updateThemeBtn() {
   const isDark = S.theme==='dark';
-  document.getElementById('theme-btn-desktop').textContent = isDark?'☀️ 浅色模式':'🌙 暗黑模式';
-  document.getElementById('theme-btn-mobile').textContent = isDark?'☀️':'🌙';
+  document.getElementById('theme-btn-desktop').innerHTML = isDark ? '☀️ <span class="hidden lg:inline whitespace-nowrap">浅色模式</span>' : '🌙 <span class="hidden lg:inline whitespace-nowrap">暗黑模式</span>';
+}
+
+// Sidebar hover expand on mobile
+let sidebarExpanded = false;
+function expandSidebar() {
+  if (window.innerWidth >= 1024) return;
+  const sb = document.getElementById('sidebar');
+  sb.style.width = '13rem';
+  document.getElementById('sidebar-brand').style.opacity = '1';
+  document.querySelectorAll('#nav-desktop .hidden').forEach(el => el.style.display = 'inline');
+  sidebarExpanded = true;
+}
+function collapseSidebar() {
+  if (window.innerWidth >= 1024) return;
+  setTimeout(() => {
+    if (!sidebarExpanded) return;
+    const sb = document.getElementById('sidebar');
+    sb.style.width = '3.5rem';
+    document.getElementById('sidebar-brand').style.opacity = '0';
+    document.querySelectorAll('#nav-desktop .lg\\:inline').forEach(el => el.style.display = '');
+    sidebarExpanded = false;
+  }, 300);
 }
 
 // ==================== TOAST & MODAL ====================
@@ -1738,7 +1776,7 @@ const AI_STATE = {
   provider: localStorage.getItem('wb-ai-provider')||'openai',
   model: localStorage.getItem('wb-ai-model')||'gpt-4o-mini',
   lionVariant: parseInt(localStorage.getItem('wb-lion-variant')||'0'),
-  talkLevel: localStorage.getItem('wb-lion-level')||'mid', // high|mid|low
+  talkLevel: localStorage.getItem('wb-lion-level')||'high', // high|mid|low
   lastSpoke: 0,
 };
 
@@ -1921,30 +1959,63 @@ function showAISettings() {
 }
 
 // ===== Hook into app events =====
-// Called after key user actions
 function lionOnAction(event) {
   if (!AI_STATE.enabled) return;
   const lvl = AI_STATE.talkLevel;
-  // low: only important reminders
   if (lvl==='low' && !event.important) return;
-  lionSpeak(event.prompt);
+  lionSpeak(event.prompt, event.force);
 }
 
-// Override key functions to trigger lion
-const _origAddTodo = addTodo;
-addTodo = function() { _origAddTodo(); lionOnAction({prompt:'用户刚刚添加了一个待办事项'}); };
-const _origAddCheckin = addCheckin;
-addCheckin = function(id) { _origAddCheckin(id); lionOnAction({prompt:'用户刚刚完成了一次打卡'}); };
-const _origAddTx = addTx;
-addTx = function() { _origAddTx(); lionOnAction({prompt:'用户刚刚记了一笔账'}); };
-const _origAddAnn = addAnn;
-addAnn = function() { _origAddAnn(); lionOnAction({prompt:'用户刚刚添加了一个纪念日'}); };
-const _origAddWish = addWish;
-addWish = function() { _origAddWish(); lionOnAction({prompt:'用户刚刚许了一个心愿，鼓励一下'}); };
-const _origAddDiary = addDiary;
-addDiary = function() { _origAddDiary(); lionOnAction({prompt:'用户刚刚写了一篇日记'}); };
+// Helper to wrap functions with lion hook
+function withLion(fn, prompt, force) {
+  return function() { const r = fn.apply(this, arguments); lionOnAction({prompt, force}); return r; };
+}
+function withLionAfter(fn, promptFn, force) {
+  return function() { const r = fn.apply(this, arguments); lionOnAction({prompt:promptFn(arguments), force}); return r; };
+}
 
-// Check warehouse expiry on enter
+// Calendar
+addTodo = withLion(addTodo, '用户添加了一个待办事项，夸一下行动力');
+togTodo = withLion(togTodo, '用户勾选/取消了一个待办');
+delTodo = withLion(delTodo, '用户删除了一个待办');
+
+// Tasks
+addCheckin = withLion(addCheckin, '用户完成了一次打卡！狠狠夸赞，用俏皮话');
+addTask = withLion(addTask, '用户创建了新任务，鼓励一下');
+delTask = withLion(delTask, '用户删除了一个任务');
+delCheckin = withLion(delCheckin, '用户删除了一条打卡记录');
+
+// Countdown
+addAnn = withLion(addAnn, '用户添加了一个纪念日，暖心地回应');
+delAnn = withLion(delAnn, '用户删除了一个纪念日');
+
+// Finance
+addTx = withLion(addTx, '用户记了一笔账，简短俏皮评论一下金额');
+delTx = withLion(delTx, '用户删除了一条记账记录');
+
+// Archive
+addArc = withLion(addArc, '用户创建了新档案');
+addClue = withLion(addClue, '用户在档案里添加了新线索，像侦探一样！');
+delArc = withLion(delArc, '用户删除了一个档案');
+delClue = withLion(delClue, '用户删除了一条线索');
+
+// Diary
+addDiary = withLion(addDiary, '用户写了一篇日记，温暖回应一下心情');
+delDiary = withLion(delDiary, '用户删除了一篇日记');
+
+// Wishes
+addWish = withLion(addWish, '用户许了一个心愿，鼓励并表达相信会实现');
+delWish = withLion(delWish, '用户删除了一个心愿');
+addCond = withLion(addCond, '用户为心愿添加了条件项');
+togCond = withLion(togCond, '用户完成/取消了心愿的一个条件，完成时狠狠夸');
+addWishMsg = withLion(addWishMsg, '用户给心愿留了言');
+
+// Warehouse
+addWHItem = withLion(addWHItem, '用户往仓库添加了物品，提醒注意保质期哦');
+delWHItem = withLion(delWHItem, '用户从仓库删除了物品');
+addWHSubCat = withLion(addWHSubCat, '用户添加了仓库分类');
+
+// Warehouse expiry check on enter
 const _origRenderWH = renderWH;
 renderWH = function() {
   _origRenderWH();
@@ -1956,7 +2027,7 @@ renderWH = function() {
       return days <= 7;
     });
     if (expItems.length) {
-      lionOnAction({prompt:`仓库里有${expItems.length}件物品即将或已经过期：${expItems.map(i=>i.name).join('、')}。提醒用户注意`, important:true});
+      lionOnAction({prompt:`仓库有${expItems.length}件临期/过期物品：${expItems.map(i=>i.name).join('、')}。俏皮提醒用户处理`, important:true, force:true});
     }
   }
 };
