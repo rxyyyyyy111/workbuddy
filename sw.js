@@ -1,4 +1,4 @@
-const CACHE = 'workbuddy-v2';
+const CACHE = 'workbuddy-v3';
 const ASSETS = [
   './workbuddy.html',
   './manifest.json',
