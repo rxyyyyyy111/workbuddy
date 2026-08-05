@@ -341,39 +341,43 @@ tailwind.config = {
 
 <script>
 // ==================== GLOBAL STATE ====================
+function safeParse(raw, fallbackStr) {
+  try { return JSON.parse(raw || fallbackStr); } catch(e) { return JSON.parse(fallbackStr); }
+}
+
 const S = {
   theme: localStorage.getItem('wb-theme') || 'light',
   panel: localStorage.getItem('wb-panel') || 'calendar',
 
   // Calendar
-  todos: JSON.parse(localStorage.getItem('wb-todos') || '[]'),
+  todos: safeParse(localStorage.getItem("wb-todos"), '[]'),
   selDate: null, calYear: null, calMonth: null,
 
   // Tasks
-  tasks: JSON.parse(localStorage.getItem('wb-tasks') || '[]'),
-  taskCategories: JSON.parse(localStorage.getItem('wb-taskCategories') || '["默认","工作","学习","生活","健身"]'),
+  tasks: safeParse(localStorage.getItem("wb-tasks"), '[]'),
+  taskCategories: safeParse(localStorage.getItem("wb-taskCategories"), '["默认","工作","学习","生活","健身"]'),
   taskId: null, // which task detail is open
 
   // Countdown
-  anniversaries: JSON.parse(localStorage.getItem('wb-anniversaries') || '[]'),
+  anniversaries: safeParse(localStorage.getItem("wb-anniversaries"), '[]'),
 
   // Finance
-  transactions: JSON.parse(localStorage.getItem('wb-transactions') || '[]'),
+  transactions: safeParse(localStorage.getItem("wb-transactions"), '[]'),
   finYear: null, finMonth: null,
 
   // Archive
-  archives: JSON.parse(localStorage.getItem('wb-archives') || '[]'),
+  archives: safeParse(localStorage.getItem("wb-archives"), '[]'),
   archiveId: null,
 
   // Diary
-  diaries: JSON.parse(localStorage.getItem('wb-diaries') || '[]'),
+  diaries: safeParse(localStorage.getItem("wb-diaries"), '[]'),
 
   // Wishes
-  wishes: JSON.parse(localStorage.getItem('wb-wishes') || '[]'),
+  wishes: safeParse(localStorage.getItem("wb-wishes"), '[]'),
 
   // Warehouse
-  warehouseItems: JSON.parse(localStorage.getItem('wb-warehouseItems') || '[]'),
-  warehouseSubCats: JSON.parse(localStorage.getItem('wb-warehouseSubCats') || '{"衣柜":[],"化妆品":[],"护肤品":[],"食品":[],"工具":[]}'),
+  warehouseItems: safeParse(localStorage.getItem("wb-warehouseItems"), '[]'),
+  warehouseSubCats: safeParse(localStorage.getItem("wb-warehouseSubCats"), '{"衣柜":[],"化妆品":[],"护肤品":[],"食品":[],"工具":[]}'),
   whCat: null,    // which main category is open (null = list)
   whSub: '全部',  // active sub-category filter
 };
@@ -1350,8 +1354,8 @@ function checkSharedArchive() {
   if (!hash.startsWith('#share=')) return;
   try {
     const encoded = hash.slice(7);
-    const json = decodeURIComponent(escape(atob(encoded)));
-    const data = JSON.parse(json);
+    var json = decodeURIComponent(escape(atob(encoded)));
+    var data = safeParse(json, '{}');
     // Show shared archive in a read-only modal
     showSharedArchive(data);
     // Clean URL
@@ -1856,10 +1860,11 @@ const LION_SYSTEM = `你是"狮狮"，一只Q版小狮子，住在用户的手�
 
 // Lion drag state
 let lionDrag = { active: false, startX: 0, startY: 0, origX: 0, origY: 0, moved: false };
-const lionSavedPos = JSON.parse(localStorage.getItem('wb-lion-pos')||'{}');
+var lionSavedPos = {};
+try { lionSavedPos = safeParse(localStorage.getItem("wb-lion-pos"), '{}'); } catch(e) {}
 
 // ===== Chat =====
-S.chatHistory = JSON.parse(localStorage.getItem('wb-chat')||'[]');
+try { S.chatHistory = safeParse(localStorage.getItem("wb-chat"), '[]'); } catch(e) { S.chatHistory = []; }
 
 function openChat() {
   closeLionMenu();
