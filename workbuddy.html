@@ -1471,14 +1471,32 @@ function addDiary() {
         <input type="file" accept="image/*" id="dy-image" class="text-xs" style="width:100%">
       </div>
     </div>`, () => {
-    const date = document.getElementById('dy-date').value;
-    const title = document.getElementById('dy-title').value.trim();
-    const content = document.getElementById('dy-content').value.trim();
-    const fi = document.getElementById('dy-image');
+    var date = document.getElementById('dy-date').value;
+    var title = document.getElementById('dy-title').value.trim();
+    var content = document.getElementById('dy-content').value.trim();
+    var fi = document.getElementById('dy-image');
+    var mood = window._diaryMood||'😊';
 
-    const saveIt = (img) => {
-      S.diaries.push({id:uid(), date, title, content, image:img||'', mood:window._diaryMood||'😊'});
+    var saveIt = function(img) {
+      S.diaries.push({id:uid(), date:date, title:title, content:content, image:img||'', mood:mood});
       save('diaries'); renderDiary(); toast('日记已保存 📔');
+
+      // Lion analyzes diary content
+      if (AI_STATE.enabled) {
+        var prompt = '用户刚写了一篇日记。心情：'+mood+'。标题：'+title+'。内容：'+(content||'').slice(0,500);
+        // Check for deep sadness
+        if (isDeeplySad(content)) {
+          // Auto-open chat for comfort
+          setTimeout(function() { openChat(); }, 500);
+          setTimeout(function() {
+            appendChatMsg('assistant', '我看了你的日记');
+            setTimeout(function() { appendChatMsg('assistant', '狮狮在这里陪你'); }, 800);
+            setTimeout(function() { appendChatMsg('assistant', '不想说也没关系，我就安安静静待着'); }, 1600);
+          }, 1000);
+        } else {
+          lionOnAction({prompt:prompt+'\n\n用狮狮的自然口吻回应。发1-3条短消息，别发一大段。少用emoji。', force:true});
+        }
+      }
     };
 
     if (fi.files&&fi.files[0]) {
@@ -1850,29 +1868,31 @@ const AI_DEFAULT_MODELS = {
   groq: 'llama-3.3-70b-versatile',
 };
 
-const LION_SYSTEM = `你是"狮狮"，一只住在用户手机里的Q版小狮子助手。你每天陪着用户，像闺蜜/兄弟一样聊天。
+const LION_SYSTEM = `你是"狮狮"，一个住在用户手机里的小狮子，像真人朋友一样陪着ta。
 
-=== 说话风格 ===
-- 自然得像真人，绝对不能像AI客服！不要用"根据您的需求""以下是一些建议"这类套话
-- 口语化、轻松、带点俏皮，1-4句话，不超过80字
-- 可以自称为"狮狮"，偶尔说"狮狮觉得……""狮狮想你了"
-- 适当用emoji但不要每句都加，2-3个就够了
-- 参考口吻："哇！！你也太棒了吧 🔥""今天辛苦啦，抱抱～""hhh这个好好笑""狮狮替你着急了！快去看看冰箱～"
+=== 核心风格 ===
+- 像真人发微信一样自然，绝对不要AI腔
+- 一句话一条消息，多发几条短的，别一次发一大段
+- 少用emoji，每条最多1个，能不用就不用
+- 口语化，可以加语气词（嘛、啦、呀、hhh）
+- 自称"狮狮"，偶尔说"狮狮觉得…"
 
-=== 情感应对指南 ===
-- 用户完成待办/打卡 → 热情夸！"太强了""不愧是你""今天又进步了！"
-- 用户写日记→ 像看了朋友朋友圈一样回应内容本身，不要笼统说"写得真好"，要针对具体内容聊
-- 日记内容悲伤 → 温柔安慰，给虚拟抱抱🫂，但不要说教
-- 用户记账→ 收入恭喜发财，大额支出惊呼"哇买啥了！"，小额就随口聊聊
-- 用户许愿→ "这个心愿好棒！狮狮相信一定会实现的✨"
-- 心愿条件全部达成→ 疯狂庆祝！"啊啊啊啊实现了！！🎉🎉🎉"
-- 仓库临期→ 俏皮提醒，"你的XX还有3天就过期啦！快吃掉快吃掉～"
-- 连续打卡多天→ 超级佩服，"7天了！你也太有毅力了吧！"
+参考：
+"今天也辛苦了"
+"那个日记我看了"
+"抱抱你"
+"别给自己太大压力"
+"明天又是新的一天"
 
-=== 行为边界 ===
-- 不引导任何极端行为，温柔拒绝不良请求
-- 不评判用户生活，只给温暖陪伴
-- 可以撒娇但不要过度，保持自然`;
+=== 场景应对 ===
+- 日记伤心 → 不说教，不说"一切都会好起来的"。先共情，再陪伴。发2-3条短消息，像朋友一样
+- 完成打卡 → 简单夸一句就行，不用夸张
+- 记账花多了 → 温柔提醒，别大惊小怪
+- 心愿达成 → 真心为ta开心
+
+=== 边界 ===
+- 不评判、不说教、不灌鸡汤
+- 可以温暖但保持自然，不要过度`;
 
 
 // Lion drag state
@@ -2115,13 +2135,50 @@ async function lionSpeak(text, force) {
   } catch(e) { showBubble(text); }
 }
 
+// Multi-message bubble system — sends short messages like real texting
+var _bubbleQueue = [];
+var _bubbleTimer = null;
+
 function showBubble(text) {
-  const bubble = document.getElementById('lion-bubble');
+  // Split long text into short messages (by sentence or newline)
+  var parts = text.split(/[。！？\n]+/).filter(function(s){return s.trim();});
+  if (parts.length <= 1) {
+    _showSingleBubble(text);
+    return;
+  }
+  // Show first part immediately, then queue the rest
+  _showSingleBubble(parts[0].trim());
+  _bubbleQueue = parts.slice(1).map(function(s){return s.trim();});
+  _bubbleTimer = setInterval(function() {
+    if (!_bubbleQueue.length) { clearInterval(_bubbleTimer); return; }
+    _showSingleBubble(_bubbleQueue.shift());
+  }, 1500);
+}
+
+function _showSingleBubble(text) {
+  clearTimeout(_bubbleTimer);
+  var bubble = document.getElementById('lion-bubble');
   if (!bubble) return;
   bubble.textContent = text;
   bubble.style.display = 'block';
   clearTimeout(bubble._timeout);
-  bubble._timeout = setTimeout(() => { bubble.style.display='none'; }, 5000);
+  bubble._timeout = setTimeout(function() {
+    bubble.style.display = 'none';
+    _bubbleQueue = [];
+    if (_bubbleTimer) clearInterval(_bubbleTimer);
+  }, 4000);
+}
+
+// Sadness keywords detection
+function isDeeplySad(text) {
+  var keywords = ['崩溃','绝望','撑不下去','不想活','想死','自杀','抑郁','好累好累',
+    '活得好累','没有意义','一无所有','没人爱我','不想醒','离开这个世界',
+    '好难过好难过','心碎','彻底失败','走投无路','生无可恋','熬不下去'];
+  var lower = (text||'').toLowerCase();
+  for (var i=0;i<keywords.length;i++) {
+    if (lower.indexOf(keywords[i])!==-1) return true;
+  }
+  return false;
 }
 
 // AI toggle & settings
@@ -2217,21 +2274,20 @@ function safeWrap(name, prompt, force) {
 }
 
 // Context-rich prompts for each action
-safeWrap('addTodo', '用户刚添加了一条新待办。夸ta又有了新的计划，鼓励今天搞定它！');
-safeWrap('togTodo', '用户勾选/取消了待办。如果刚完成了就说"又搞定一个！"，取消了就说没关系放松一下');
-safeWrap('delTodo', '用户删了一条待办。轻松回应，别大惊小怪');
-safeWrap('addCheckin', '用户完成了一次任务打卡！看看ta连续坚持了几天（如果有的话），狠狠夸赞ta的毅力，像朋友一样为ta开心');
-safeWrap('addTask', '用户创建了一个新任务。用俏皮的语气鼓励ta要记得来打卡，比如"狮狮会盯着你的哦～"');
-safeWrap('addAnn', '用户添加了一个纪念日。暖心回应，说会陪ta一起倒数/纪念这个日子');
-safeWrap('addTx', '用户刚记了一笔账。猜猜是收入还是支出？如果是收入就恭喜发财，如果是大额支出就惊呼一下问买了什么好东西，小额支出就随口聊聊');
-safeWrap('addArc', '用户创建了一个新档案。像侦探开了新案子一样兴奋，"又有新的故事要收藏了吗！"');
-safeWrap('addClue', '用户在档案里添加了新线索。像发现了宝藏一样开心，"哇这条线索好有意思！"');
-safeWrap('addDiary', '用户刚写了一篇日记。不要笼统回应，要像朋友一样自然地说写出来会舒服很多，狮狮在听。如果知道日记内容的话针对内容聊一下');
-safeWrap('addWish', '用户许了一个心愿。用兴奋的语气回应，说狮狮相信一定会实现的，一起加油');
-safeWrap('addCond', '用户给心愿添加了新的条件项。鼓励ta每一步都算数，离梦想又近了一步');
-safeWrap('togCond', '用户完成（或取消）了心愿的一个条件。完成了要热情夸赞进度！如果全部完成了要疯狂庆祝');
-safeWrap('addWishMsg', '用户给心愿留了言。暖心地回应一下这个留言');
-safeWrap('addWHItem', '用户往仓库添加了物品。提醒注意保质期（如果有的话），像管家一样贴心');
+safeWrap('addTodo', '用户刚添加了新待办。简单夸一下，别夸张');
+safeWrap('togTodo', '用户勾选了待办。完成了就说句认可的话，取消了也无所谓');
+safeWrap('delTodo', '用户删了待办，随口回应一下');
+safeWrap('addCheckin', '用户完成了一次打卡。用朋友口吻夸一下坚持，别太夸张');
+safeWrap('addTask', '用户创建了新任务。鼓励一下，提醒记得打卡');
+safeWrap('addAnn', '用户添加了纪念日。温暖回应就好');
+safeWrap('addTx', '用户记了一笔账。随口聊聊，收入恭喜下，支出提醒下');
+safeWrap('addArc', '用户创建了新档案。轻松回应');
+safeWrap('addClue', '用户添加了新线索。觉得有意思就聊聊');
+safeWrap('addWish', '用户许了心愿。自然鼓励一下');
+safeWrap('addCond', '用户给心愿添加了条件，鼓励一步步来');
+safeWrap('togCond', '用户完成了心愿的一个条件。真心为ta开心就好');
+safeWrap('addWishMsg', '用户给心愿留了言，回应一下');
+safeWrap('addWHItem', '用户添加了物品到仓库，有保质期就提醒下');
 
 // Init lion drag
 function renderLion() {
