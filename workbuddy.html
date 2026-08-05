@@ -1846,9 +1846,9 @@ const AI_STATE = {
   model: (function(){
     var m = localStorage.getItem('wb-ai-model')||'';
     var p = localStorage.getItem('wb-ai-provider')||'openai';
-    // Auto-correct if model is from a different provider's default
-    if (m==='gpt-4o-mini' && p==='deepseek') return '';
-    if (m==='deepseek-chat' && p==='deepseek') return ''; // old name, update
+    // Auto-correct if model is from a different provider
+    if ((m==='gpt-4o-mini'||m.indexOf('gpt-')===0) && (p==='deepseek'||p==='groq')) { localStorage.removeItem('wb-ai-model'); return ''; }
+    if (m==='deepseek-chat' && p==='deepseek') { localStorage.removeItem('wb-ai-model'); return ''; }
     return m;
   })(),
   lionVariant: parseInt(localStorage.getItem('wb-lion-variant')||'0'),
@@ -2089,6 +2089,9 @@ async function callAI(messages, maxTokens) {
     var controller = new AbortController();
     var timeoutId = setTimeout(function() { controller.abort(); }, 15000);
     var model = AI_STATE.model || AI_DEFAULT_MODELS[AI_STATE.provider] || 'gpt-4o-mini';
+    // Last-resort: if model name clearly doesn't belong to this provider, use default
+    if (AI_STATE.provider==='deepseek' && model.indexOf('gpt-')===0) model = 'deepseek-v4-pro';
+    if (AI_STATE.provider==='openai' && model.indexOf('deepseek-')===0) model = 'gpt-4o-mini';
     var body = {model:model, messages:messages, max_tokens:maxTokens, stream:false};
     // DeepSeek doesn't like temperature in some cases
     if (AI_STATE.provider !== 'deepseek') body.temperature = 0.9;
