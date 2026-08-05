@@ -228,6 +228,64 @@ tailwind.config = {
     #sidebar { width: 14rem !important; }
     main { margin-left: 14rem !important; }
   }
+
+  /* Chat overlay */
+  .chat-overlay {
+    position: fixed; inset: 0; z-index: 180; background: rgba(0,0,0,.55);
+    backdrop-filter: blur(6px); display: flex; flex-direction: column;
+    align-items: center; animation: fadeIn .3s ease-out;
+  }
+  .chat-lion-big {
+    width: 100px; height: 100px; border-radius: 50%; object-fit: cover;
+    margin-top: 2rem; flex-shrink: 0;
+    box-shadow: 0 8px 32px rgba(236,72,153,0.3);
+    animation: bob 2s ease-in-out infinite;
+  }
+  .chat-box {
+    width: 92vw; max-width: 420px; flex: 1; margin: 1rem 0 1.5rem;
+    background: var(--card); border-radius: 1.25rem; display: flex;
+    flex-direction: column; overflow: hidden;
+    box-shadow: 0 12px 48px rgba(0,0,0,.2);
+  }
+  .chat-msgs {
+    flex: 1; overflow-y: auto; padding: 1rem; display: flex;
+    flex-direction: column; gap: .6rem;
+  }
+  .chat-msg {
+    max-width: 85%; padding: .55rem .85rem; border-radius: 1rem;
+    font-size: .82rem; line-height: 1.5; animation: popIn .25s ease-out;
+  }
+  .chat-msg.user {
+    align-self: flex-end; background: var(--accent); color: #fff;
+    border-bottom-right-radius: .25rem;
+  }
+  .chat-msg.assistant {
+    align-self: flex-start; background: var(--hover); color: var(--text);
+    border-bottom-left-radius: .25rem;
+  }
+  .chat-input-row {
+    display: flex; gap: .4rem; padding: .6rem .8rem;
+    border-top: 1px solid var(--border);
+  }
+  .chat-input-row input {
+    flex: 1; border: 1.5px solid var(--border); border-radius: 2rem;
+    padding: .5rem .9rem; font-size: .82rem; background: var(--bg);
+    color: var(--text); outline: none; font-family: inherit;
+  }
+  .chat-input-row input:focus { border-color: var(--accent); }
+  .chat-close {
+    position: absolute; top: .8rem; right: 1rem; z-index: 10;
+    width: 36px; height: 36px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,.85); font-size: 1.3rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    color: #333; transition: all .2s;
+  }
+  .chat-close:hover { background: #fff; transform: scale(1.1); }
+  .dark .chat-close { background: rgba(40,40,40,.9); color: #ddd; }
+
+  /* Draggable lion */
+  #lion-wrap.dragging { transition: none; }
+  #lion-wrap.dragging .lion-avatar { transform: scale(1.15); }
 </style>
 </head>
 <body class="min-h-screen">
@@ -276,9 +334,9 @@ tailwind.config = {
     <button data-lvl="mid" onclick="setLionLevel('mid')">💬 话中模式</button>
     <button data-lvl="low" onclick="setLionLevel('low')">🤫 话少模式</button>
     <hr style="border-color:var(--border);margin:2px 0">
-    <button onclick="regenerateLion()">🎨 重新生成</button>
+    <button onclick="openChat()">💬 发起对话</button>
   </div>
-  <img id="lion-img" class="lion-avatar lion-bobbing" src="./shi.jpg" alt="小莱" onclick="toggleLionMenu()" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
+  <img id="lion-img" class="lion-avatar lion-bobbing" src="./shi.jpg" alt="小莱" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
 </div>
 
 <script>
@@ -1792,15 +1850,155 @@ const LION_SYSTEM = `你是一只Q版小狮子助手，名字叫"小莱"。你�
 function renderLion() {
   document.getElementById('lion-wrap').style.display = AI_STATE.enabled ? 'flex' : 'none';
   updateAIToggle();
-  if (AI_STATE.enabled) updateLionLevelUI();
+  if (AI_STATE.enabled) { updateLionLevelUI(); initLionDrag(); }
 }
 
-function regenerateLion() {
-  // Refresh the lion image (bust browser cache)
-  const img = document.getElementById('lion-img');
-  if (img) { img.src = './shi.jpg?' + Date.now(); }
-  lionSpeak('嘿嘿，我换好新皮肤啦！可爱吗？🦁✨');
+// Lion drag state
+let lionDrag = { active: false, startX: 0, startY: 0, origX: 0, origY: 0, moved: false };
+const lionSavedPos = JSON.parse(localStorage.getItem('wb-lion-pos')||'{}');
+
+// ===== Chat =====
+S.chatHistory = JSON.parse(localStorage.getItem('wb-chat')||'[]');
+
+function openChat() {
   closeLionMenu();
+  if (!AI_STATE.apiKey) { showAISettings(); return; }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'chat-overlay';
+  overlay.id = 'chat-overlay';
+  overlay.innerHTML = `
+    <button class="chat-close" onclick="closeChat()">✕</button>
+    <img src="./shi.jpg" class="chat-lion-big" alt="小莱" style="margin-top:3rem">
+    <div class="chat-box">
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-input-row">
+        <input id="chat-input" placeholder="和小莱聊天吧…" autofocus>
+        <button class="btn btn-primary btn-sm" onclick="sendChat()">发送</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  renderChatHistory();
+  document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key==='Enter') sendChat(); });
+  // Greeting if empty
+  if (!S.chatHistory.length) {
+    appendChatMsg('assistant', '嗨嗨～我是小莱！有什么想聊的都可以跟我说哦 🦁💬');
+  }
+}
+
+function closeChat() {
+  const ov = document.getElementById('chat-overlay');
+  if (ov) ov.remove();
+}
+
+function renderChatHistory() {
+  const msgs = document.getElementById('chat-msgs');
+  if (!msgs) return;
+  msgs.innerHTML = S.chatHistory.map(m => `
+    <div class="chat-msg ${m.role}">${esc(m.content)}</div>
+  `).join('');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function appendChatMsg(role, content) {
+  S.chatHistory.push({ role, content, time: Date.now() });
+  if (S.chatHistory.length > 200) S.chatHistory = S.chatHistory.slice(-200);
+  save('chat');
+  const msgs = document.getElementById('chat-msgs');
+  if (msgs) {
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}`;
+    div.textContent = content;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+}
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  appendChatMsg('user', text);
+
+  if (!AI_STATE.apiKey) {
+    appendChatMsg('assistant', '你还没设置 API Key 哦～点右上角 AI 按钮配置一下吧 🦁');
+    return;
+  }
+
+  // Build messages for API
+  const msgs = [
+    { role:'system', content: LION_SYSTEM },
+    ...S.chatHistory.slice(-20).map(m => ({ role: m.role, content: m.content })),
+  ];
+
+  const reply = await callAI(msgs, 200);
+  if (reply) {
+    appendChatMsg('assistant', reply);
+  } else {
+    appendChatMsg('assistant', '唔…网络好像不太稳定，等会再试试嘛～🦁💦');
+  }
+}
+
+// ===== Lion Drag =====
+function initLionDrag() {
+  const wrap = document.getElementById('lion-wrap');
+  if (!wrap) return;
+
+  // Restore saved position
+  if (lionSavedPos.x) {
+    wrap.style.right = 'auto';
+    wrap.style.bottom = 'auto';
+    wrap.style.left = lionSavedPos.x + 'px';
+    wrap.style.top = lionSavedPos.y + 'px';
+  }
+
+  wrap.addEventListener('pointerdown', e => {
+    if (e.target.closest('#lion-menu') || e.target.closest('.lion-bubble')) return;
+    lionDrag.active = true;
+    lionDrag.moved = false;
+    lionDrag.startX = e.clientX;
+    lionDrag.startY = e.clientY;
+    const rect = wrap.getBoundingClientRect();
+    lionDrag.origX = rect.left;
+    lionDrag.origY = rect.top;
+    wrap.setPointerCapture(e.pointerId);
+    wrap.classList.add('dragging');
+  });
+
+  wrap.addEventListener('pointermove', e => {
+    if (!lionDrag.active) return;
+    const dx = e.clientX - lionDrag.startX;
+    const dy = e.clientY - lionDrag.startY;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) lionDrag.moved = true;
+    if (!lionDrag.moved) return;
+    wrap.style.right = 'auto';
+    wrap.style.bottom = 'auto';
+    const nx = Math.max(0, Math.min(window.innerWidth - 80, lionDrag.origX + dx));
+    const ny = Math.max(0, Math.min(window.innerHeight - 80, lionDrag.origY + dy));
+    wrap.style.left = nx + 'px';
+    wrap.style.top = ny + 'px';
+  });
+
+  wrap.addEventListener('pointerup', e => {
+    wrap.classList.remove('dragging');
+    if (lionDrag.moved) {
+      const rect = wrap.getBoundingClientRect();
+      localStorage.setItem('wb-lion-pos', JSON.stringify({ x: rect.left, y: rect.top }));
+    }
+    lionDrag.active = false;
+    // If didn't move (was a click), toggle menu
+    if (!lionDrag.moved) {
+      toggleLionMenu();
+    }
+  });
+
+  wrap.addEventListener('pointercancel', () => {
+    wrap.classList.remove('dragging');
+    lionDrag.active = false;
+  });
 }
 
 function setLionLevel(lvl) {
@@ -1826,20 +2024,9 @@ function closeLionMenu() {
   document.getElementById('lion-menu').classList.remove('show');
 }
 
-// Long press for lion menu
-let lionPressTimer;
-document.addEventListener('DOMContentLoaded', () => {
-  const lion = document.getElementById('lion-img');
-  if (lion) {
-    lion.addEventListener('pointerdown', () => {
-      lionPressTimer = setTimeout(() => toggleLionMenu(), 600);
-    });
-    lion.addEventListener('pointerup', () => clearTimeout(lionPressTimer));
-    lion.addEventListener('pointerleave', () => clearTimeout(lionPressTimer));
-  }
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('#lion-wrap')) closeLionMenu();
-  });
+// Mouseup outside closes lion menu
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#lion-wrap')) closeLionMenu();
 });
 
 // AI API call
