@@ -1,0 +1,2051 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WorkBuddy · 个人工作台</title>
+<meta name="theme-color" content="#ec4899">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WorkBuddy">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./workbuddy-icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./workbuddy-icon.svg">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        bloom: { 50:'#fef1f5',100:'#fde5ed',200:'#fccfdf',300:'#f9a8c7',400:'#f472a6',500:'#ec4899',600:'#db2777',700:'#be185d',800:'#9d174d',900:'#831843' }
+      }
+    }
+  }
+}
+</script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+  :root {
+    --bg: #fef1f5; --card: #ffffff; --text: #1e1b1e; --sub: #6b5e6b;
+    --accent: #ec4899; --accent-light: #fde5ed; --border: #f0d0e0;
+    --hover: #fdf2f7; --shadow: 0 4px 24px rgba(236,72,153,0.08);
+    --radius: 1.25rem; --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+    --green: #10b981; --red: #ef4444;
+  }
+  .dark {
+    --bg: #0f0f0f; --card: #1a1a1a; --text: #e8e4e8; --sub: #9d95a0;
+    --accent: #f472a6; --accent-light: #2a1522; --border: #2a2028;
+    --hover: #1f151c; --shadow: 0 4px 24px rgba(0,0,0,0.4);
+    --green: #34d399; --red: #f87171;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans SC', system-ui, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; transition: background var(--transition), color var(--transition);
+    overflow-x: hidden;
+  }
+  .card {
+    background: var(--card); border-radius: var(--radius);
+    box-shadow: var(--shadow); border: 1px solid var(--border);
+    transition: all var(--transition);
+  }
+  .card:hover { box-shadow: 0 6px 32px rgba(236,72,153,0.12); }
+  .dark .card:hover { box-shadow: 0 6px 32px rgba(0,0,0,0.5); }
+  .btn {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .55rem 1.1rem; border-radius: 3rem; font-size: .875rem;
+    font-weight: 500; cursor: pointer; border: none;
+    transition: all var(--transition); white-space: nowrap;
+    font-family: inherit; user-select: none;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  .btn-ghost { background: transparent; color: var(--text); border: 1.5px solid var(--border); }
+  .btn-ghost:hover { background: var(--hover); }
+  .btn-danger { background: #fee2e2; color: #dc2626; }
+  .dark .btn-danger { background: #3b1515; color: #f87171; }
+  .btn-danger:hover { filter: brightness(.95); }
+  .btn-sm { padding: .35rem .75rem; font-size: .78rem; border-radius: 2rem; }
+  .btn-xs { padding: .2rem .55rem; font-size: .7rem; border-radius: 1.5rem; }
+  .input, select.input, textarea.input {
+    padding: .6rem .9rem; border-radius: .75rem; border: 1.5px solid var(--border);
+    background: var(--card); color: var(--text); font-size: .875rem;
+    font-family: inherit; outline: none; transition: all var(--transition);
+    width: 100%; resize: vertical;
+  }
+  .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(236,72,153,0.1); }
+  .fade-in { animation: fadeIn .35s ease-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes scaleIn { from { opacity: 0; transform: scale(.92); } to { opacity: 1; transform: scale(1); } }
+  .slide-up { animation: slideUp .4s ease-out; }
+  .scale-in { animation: scaleIn .25s ease-out; }
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px); animation: fadeIn .2s ease-out;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: .65rem; padding: .7rem 1rem;
+    border-radius: .85rem; cursor: pointer; transition: all var(--transition);
+    color: var(--sub); font-size: .9rem; font-weight: 500;
+  }
+  .nav-item:hover { background: var(--hover); color: var(--text); }
+  .nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+  .toast {
+    position: fixed; top: 1.5rem; right: 1.5rem; z-index: 200;
+    padding: .75rem 1.25rem; border-radius: .85rem; font-size: .85rem;
+    font-weight: 500; animation: slideIn .3s ease-out;
+    box-shadow: 0 8px 32px rgba(0,0,0,.15);
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+  /* Toggle switch */
+  .toggle-opt {
+    flex: 1; text-align: center; padding: .5rem; border-radius: 2rem;
+    font-size: .85rem; cursor: pointer; transition: all var(--transition);
+    border: 1.5px solid var(--border); color: var(--sub);
+  }
+  .toggle-opt.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  input[type="checkbox"] { accent-color: var(--accent); width: 1rem; height: 1rem; cursor: pointer; }
+
+  /* File upload pill */
+  .file-pill {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .3rem .7rem; border-radius: 2rem; font-size: .75rem;
+    font-weight: 500;
+  }
+  .file-pill-img { background: #dbeafe; color: #1e40af; }
+  .file-pill-vid { background: #fce7f3; color: #9d174d; }
+  .dark .file-pill-img { background: #1e3a5f; color: #93c5fd; }
+  .dark .file-pill-vid { background: #3b1a2e; color: #f9a8d4; }
+
+  /* Category badge */
+  .cat-badge {
+    display: inline-block; padding: .15rem .6rem; border-radius: 2rem;
+    font-size: .7rem; font-weight: 600;
+    background: var(--accent-light); color: var(--accent);
+  }
+
+  /* Countdown ring */
+  .cd-ring-bg { stroke: var(--border); }
+  .cd-ring-fg { stroke: var(--accent); transition: stroke-dashoffset .8s ease-out; }
+
+  /* Media preview */
+  .media-thumb { border-radius: .75rem; object-fit: cover; cursor: pointer; }
+  video.media-thumb { max-height: 200px; background: #000; }
+
+  /* Condition item */
+  .cond-item { cursor: pointer; transition: all var(--transition); border-radius: .5rem; padding: .35rem .5rem; }
+  .cond-item:hover { background: var(--hover); }
+  .cond-done { text-decoration: line-through; opacity: .45; }
+
+  /* Warehouse */
+  .wh-item {
+    border-radius: .85rem; padding: .6rem; cursor: pointer;
+    transition: all var(--transition); text-align: center;
+    border: 1.5px solid var(--border); background: var(--card);
+  }
+  .wh-item:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(236,72,153,0.1); }
+  .wh-thumb {
+    width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: .6rem;
+    background: var(--hover); display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+  }
+  .subcat-pill {
+    display: inline-block; padding: .3rem .75rem; border-radius: 2rem;
+    font-size: .78rem; cursor: pointer; transition: all var(--transition);
+    border: 1.5px solid var(--border); color: var(--sub); white-space: nowrap;
+  }
+  .subcat-pill:hover, .subcat-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .expiry-warn { background: #fef3c7; color: #92400e; }
+  .expiry-danger { background: #fee2e2; color: #991b1b; }
+  .dark .expiry-warn { background: #3b2f0e; color: #fcd34d; }
+  .dark .expiry-danger { background: #3b1515; color: #f87171; }
+
+  @media (max-width: 640px) {
+    .card { border-radius: 1rem; }
+  }
+
+  /* ====== AI Lion ====== */
+  .lion-wrap {
+    position: fixed; bottom: 20px; right: 20px; z-index: 150;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+  }
+  .lion-bubble {
+    max-width: 220px; padding: .6rem .85rem; border-radius: 1rem 1rem .25rem 1rem;
+    font-size: .78rem; line-height: 1.45; animation: popIn .35s ease-out;
+    box-shadow: 0 4px 16px rgba(0,0,0,.1); word-break: break-word;
+    background: var(--card); color: var(--text); border: 1.5px solid var(--border);
+  }
+  @keyframes popIn { from{opacity:0;transform:translateY(8px) scale(.9)} to{opacity:1;transform:translateY(0) scale(1)} }
+  .lion-avatar {
+    width: 72px; height: 72px; cursor: pointer; transition: transform .3s;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,.12));
+    user-select: none; -webkit-user-select: none;
+  }
+  .lion-avatar:hover { transform: scale(1.1); }
+  .lion-avatar:active { transform: scale(.95); }
+  .lion-menu {
+    position: absolute; bottom: 80px; right: 0; background: var(--card);
+    border: 1.5px solid var(--border); border-radius: 1rem; padding: .5rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,.15); display: none; flex-direction: column;
+    gap: 2px; min-width: 140px; animation: popIn .25s ease-out;
+  }
+  .lion-menu.show { display: flex; }
+  .lion-menu button {
+    border: none; background: transparent; color: var(--text); padding: .45rem .75rem;
+    border-radius: .6rem; cursor: pointer; font-size: .8rem; text-align: left;
+    transition: background .2s; font-family: inherit;
+  }
+  .lion-menu button:hover { background: var(--hover); }
+  .lion-menu button.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
+  /* idle bob */
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+  .lion-bobbing { animation: bob 2s ease-in-out infinite; }
+  /* AI toggle in header */
+  .ai-toggle {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .3rem .7rem; border-radius: 2rem; font-size: .78rem;
+    cursor: pointer; transition: all var(--transition); font-weight: 500;
+    border: 1.5px solid var(--border);
+  }
+  .ai-on { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+  .ai-off { background: transparent; color: var(--sub); }
+  .dark .ai-on { background: #1e3a5f; color: #93c5fd; border-color: #3b6daa; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ==================== SIDEBAR (Desktop) ==================== -->
+<aside id="sidebar" class="hidden lg:flex flex-col fixed left-0 top-0 h-full w-56 p-4 z-50" style="background:var(--card);border-right:1px solid var(--border);">
+  <div class="flex items-center gap-2 px-2 mb-6 mt-1">
+    <div class="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-sm" style="background:var(--accent);">W</div>
+    <span class="font-bold text-lg" style="color:var(--text)">WorkBuddy</span>
+  </div>
+  <nav class="flex flex-col gap-1 flex-1" id="nav-desktop"></nav>
+  <button onclick="toggleTheme()" class="btn btn-ghost btn-sm w-full mt-2" id="theme-btn-desktop"></button>
+</aside>
+
+<!-- ==================== MAIN CONTENT ==================== -->
+<main id="main" class="lg:ml-56 min-h-screen pb-24 lg:pb-8 p-4 lg:p-6">
+  <header class="flex items-center justify-between mb-5 lg:mb-6">
+    <div>
+      <h1 id="page-title" class="text-xl lg:text-2xl font-bold"></h1>
+      <p id="page-sub" class="text-sm mt-0.5" style="color:var(--sub)"></p>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="today-clock" class="text-sm hidden sm:inline" style="color:var(--sub)"></span>
+      <button onclick="toggleAI()" class="ai-toggle ai-off" id="ai-toggle-btn" title="AI 助手">🤖 AI</button>
+      <button onclick="toggleTheme()" class="btn btn-ghost btn-sm lg:hidden" id="theme-btn-mobile">🌙</button>
+    </div>
+  </header>
+
+  <div id="panel-calendar" class="panel"></div>
+  <div id="panel-tasks" class="panel hidden"></div>
+  <div id="panel-countdown" class="panel hidden"></div>
+  <div id="panel-finance" class="panel hidden"></div>
+  <div id="panel-archive" class="panel hidden"></div>
+  <div id="panel-diary" class="panel hidden"></div>
+  <div id="panel-wishes" class="panel hidden"></div>
+  <div id="panel-warehouse" class="panel hidden"></div>
+</main>
+
+<!-- ==================== MOBILE BOTTOM NAV ==================== -->
+<nav id="bottom-nav" class="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-around py-2 px-1"
+  style="background:var(--card);border-top:1px solid var(--border);"></nav>
+
+<div id="modal-container"></div>
+<div id="toast-container"></div>
+
+<!-- ==================== AI LION ==================== -->
+<div class="lion-wrap" id="lion-wrap" style="display:none">
+  <div class="lion-bubble" id="lion-bubble" style="display:none"></div>
+  <div class="lion-menu" id="lion-menu">
+    <button data-lvl="high" onclick="setLionLevel('high')">🗣 话多模式</button>
+    <button data-lvl="mid" onclick="setLionLevel('mid')">💬 话中模式</button>
+    <button data-lvl="low" onclick="setLionLevel('low')">🤫 话少模式</button>
+    <hr style="border-color:var(--border);margin:2px 0">
+    <button onclick="regenerateLion()">🎨 重新生成</button>
+  </div>
+  <svg id="lion-svg" class="lion-avatar lion-bobbing" viewBox="0 0 100 100" onclick="toggleLionMenu()"></svg>
+</div>
+
+<script>
+// ==================== GLOBAL STATE ====================
+const S = {
+  theme: localStorage.getItem('wb-theme') || 'light',
+  panel: localStorage.getItem('wb-panel') || 'calendar',
+
+  // Calendar
+  todos: JSON.parse(localStorage.getItem('wb-todos') || '[]'),
+  selDate: null, calYear: null, calMonth: null,
+
+  // Tasks
+  tasks: JSON.parse(localStorage.getItem('wb-tasks') || '[]'),
+  taskCategories: JSON.parse(localStorage.getItem('wb-taskCategories') || '["默认","工作","学习","生活","健身"]'),
+  taskId: null, // which task detail is open
+
+  // Countdown
+  anniversaries: JSON.parse(localStorage.getItem('wb-anniversaries') || '[]'),
+
+  // Finance
+  transactions: JSON.parse(localStorage.getItem('wb-transactions') || '[]'),
+  finYear: null, finMonth: null,
+
+  // Archive
+  archives: JSON.parse(localStorage.getItem('wb-archives') || '[]'),
+  archiveId: null,
+
+  // Diary
+  diaries: JSON.parse(localStorage.getItem('wb-diaries') || '[]'),
+
+  // Wishes
+  wishes: JSON.parse(localStorage.getItem('wb-wishes') || '[]'),
+
+  // Warehouse
+  warehouseItems: JSON.parse(localStorage.getItem('wb-warehouseItems') || '[]'),
+  warehouseSubCats: JSON.parse(localStorage.getItem('wb-warehouseSubCats') || '{"衣柜":[],"化妆品":[],"护肤品":[],"食品":[],"工具":[]}'),
+  whCat: null,    // which main category is open (null = list)
+  whSub: '全部',  // active sub-category filter
+};
+
+const CAT_INCOME = ['工资','奖金','投资','兼职','红包','其他'];
+const CAT_EXPENSE = ['餐饮','购物','交通','住房','娱乐','医疗','教育','其他'];
+const ANN_TYPES = { love:'💕 恋爱', birthday:'🎂 生日', memory:'💫 纪念', other:'📌 其他' };
+const MONTHS = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+
+function save(k) { localStorage.setItem('wb-'+k, JSON.stringify(S[k])); }
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function fmt(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function esc(s) { const el=document.createElement('div'); el.textContent=s; return el.innerHTML; }
+
+// ==================== NAVIGATION ====================
+const NAV = [
+  { id:'calendar', icon:'📅', label:'日历待办' },
+  { id:'tasks', icon:'✅', label:'任务栏' },
+  { id:'countdown', icon:'⏳', label:'纪念日' },
+  { id:'finance', icon:'💰', label:'记账本' },
+  { id:'archive', icon:'📁', label:'档案馆' },
+  { id:'diary', icon:'📔', label:'日记本' },
+  { id:'wishes', icon:'🌟', label:'心愿单' },
+  { id:'warehouse', icon:'🏠', label:'仓库' },
+];
+const SUBS = {
+  calendar:'管理你的日程与任务', tasks:'打卡、心得，记录每一步',
+  countdown:'珍惜每一个重要的日子', finance:'记录每一笔收支',
+  archive:'珍藏你的记忆与线索', diary:'写下每天的心情与故事',
+  wishes:'记录每个心愿，一步步实现', warehouse:'管理你的物品库存',
+};
+
+function buildNav() {
+  const d = document.getElementById('nav-desktop');
+  const m = document.getElementById('bottom-nav');
+  d.innerHTML = NAV.map(n => `<div class="nav-item${S.panel===n.id?' active':''}" onclick="go('${n.id}')" data-nav="${n.id}"><span class="text-lg">${n.icon}</span><span>${n.label}</span></div>`).join('');
+  m.innerHTML = NAV.map(n => `<div class="flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl cursor-pointer transition-all font-medium text-xs" style="color:${S.panel===n.id?'var(--accent)':'var(--sub)'}" onclick="go('${n.id}')" data-nav="${n.id}"><span class="text-lg">${n.icon}</span><span>${n.label}</span></div>`).join('');
+}
+
+function go(id, animate=true) {
+  S.panel = id; localStorage.setItem('wb-panel', id);
+  document.querySelectorAll('.panel').forEach(p => p.classList.add('hidden'));
+  const panel = document.getElementById('panel-'+id);
+  panel.classList.remove('hidden');
+  if (animate) { panel.classList.remove('fade-in'); void panel.offsetWidth; panel.classList.add('fade-in'); }
+  const n = NAV.find(x=>x.id===id);
+  document.getElementById('page-title').textContent = n.icon+' '+n.label;
+  document.getElementById('page-sub').textContent = SUBS[id];
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.nav===id));
+  document.querySelectorAll('#bottom-nav [data-nav]').forEach(el => el.style.color = el.dataset.nav===id ? 'var(--accent)' : 'var(--sub)');
+  render(id);
+}
+
+// ==================== THEME ====================
+function toggleTheme() {
+  S.theme = S.theme==='light'?'dark':'light';
+  localStorage.setItem('wb-theme', S.theme);
+  document.documentElement.classList.toggle('dark', S.theme==='dark');
+  updateThemeBtn();
+}
+function updateThemeBtn() {
+  const isDark = S.theme==='dark';
+  document.getElementById('theme-btn-desktop').textContent = isDark?'☀️ 浅色模式':'🌙 暗黑模式';
+  document.getElementById('theme-btn-mobile').textContent = isDark?'☀️':'🌙';
+}
+
+// ==================== TOAST & MODAL ====================
+function toast(msg, type='success') {
+  const c = document.getElementById('toast-container');
+  const maps = { success:['#ecfdf5','#065f46'], error:['#fef2f2','#991b1b'], info:['#eff6ff','#1e40af'] };
+  const [bg,col] = maps[type]||maps.info;
+  const el = document.createElement('div');
+  el.className='toast'; el.style.cssText=`background:${bg};color:${col};`;
+  el.textContent=msg; c.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>el.remove(),300);},2000);
+}
+
+function modal(title, bodyHTML, onSave, wide) {
+  const ct = document.getElementById('modal-container');
+  ct.innerHTML = `<div class="modal-overlay scale-in" onclick="if(event.target===this)closeModal()">
+    <div class="card p-5 w-full ${wide?'max-w-lg':'max-w-md'} mx-4 max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-bold text-lg">${title}</h3>
+        <button class="text-xl leading-none cursor-pointer opacity-50 hover:opacity-100 transition-opacity" onclick="closeModal()" style="color:var(--text)">&times;</button>
+      </div>
+      <div id="modal-body">${bodyHTML}</div>
+      <div class="flex gap-2 mt-5 justify-end">
+        <button class="btn btn-ghost btn-sm" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary btn-sm" id="modal-save">保存</button>
+      </div>
+    </div></div>`;
+  document.getElementById('modal-save').onclick = () => { onSave(); closeModal(); };
+}
+function closeModal() { document.getElementById('modal-container').innerHTML=''; }
+
+// ==================== RENDER DISPATCH ====================
+function render(id) {
+  switch(id) {
+    case 'calendar': renderCal(); break;
+    case 'tasks': renderTasks(); break;
+    case 'countdown': renderCD(); break;
+    case 'finance': renderFin(); break;
+    case 'archive': renderArc(); break;
+    case 'diary': renderDiary(); break;
+    case 'wishes': renderWishes(); break;
+    case 'warehouse': renderWH(); break;
+  }
+}
+
+// ==================== 1. CALENDAR + TODO ====================
+function renderCal() {
+  const now = new Date();
+  if (S.calYear===null) { S.calYear=now.getFullYear(); S.calMonth=now.getMonth(); }
+  const panel = document.getElementById('panel-calendar');
+  const firstDay = new Date(S.calYear, S.calMonth, 1).getDay();
+  const daysIn = new Date(S.calYear, S.calMonth+1, 0).getDate();
+  const today = new Date(); const todayStr = fmt(today);
+
+  let cells = '';
+  const lead = firstDay===0?6:firstDay-1;
+  for (let i=0;i<lead;i++) cells+='<div class="h-12 sm:h-16"></div>';
+
+  for (let d=1;d<=daysIn;d++) {
+    const ds = `${S.calYear}-${String(S.calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = ds===todayStr;
+    const isSel = ds===S.selDate;
+    const tds = S.todos.filter(t=>t.date===ds);
+    const done = tds.filter(t=>t.done).length;
+    const pending = tds.length-done;
+    cells += `<div class="h-12 sm:h-16 rounded-xl p-1 cursor-pointer transition-all flex flex-col items-center relative
+      ${isToday?'ring-2 ring-[var(--accent)]':isSel?'ring-2':''} hover:bg-[var(--hover)]"
+      style="background:${isToday?'var(--accent-light)':isSel?'var(--hover)':'transparent'};${isSel?'outline:2px solid var(--accent);outline-offset:-2px;':''}"
+      onclick="pickDate('${ds}')">
+      <span class="text-xs font-medium" style="color:${isToday||isSel?'var(--accent)':'var(--sub)'};font-weight:${isToday||isSel?'700':'400'}">${d}</span>
+      ${tds.length>0?`<div class="flex gap-0.5 mt-0.5 flex-wrap justify-center">${done>0?'<span class="w-1.5 h-1.5 rounded-full" style="background:var(--green)"></span>':''}${pending>0?'<span class="w-1.5 h-1.5 rounded-full" style="background:var(--accent)"></span>':''}</div>`:''}
+    </div>`;
+  }
+
+  panel.innerHTML = `<div class="flex flex-col lg:flex-row gap-4">
+    <div class="card p-4 flex-1 slide-up">
+      <div class="flex items-center justify-between mb-3">
+        <button class="btn btn-ghost btn-sm" onclick="S.calMonth--;if(S.calMonth<0){S.calMonth=11;S.calYear--};renderCal()">◀</button>
+        <span class="font-bold text-lg">${MONTHS[S.calMonth]} ${S.calYear}</span>
+        <button class="btn btn-ghost btn-sm" onclick="S.calMonth++;if(S.calMonth>11){S.calMonth=0;S.calYear++};renderCal()">▶</button>
+      </div>
+      <div class="grid grid-cols-7 gap-0.5 sm:gap-1 text-center text-xs font-medium mb-1" style="color:var(--sub)">
+        <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
+      </div>
+      <div class="grid grid-cols-7 gap-0.5 sm:gap-1">${cells}</div>
+    </div>
+    <div class="card p-4 flex-1 min-w-0 slide-up" id="todo-panel">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-bold" id="todo-label">选择一个日期</h3>
+        <button class="btn btn-primary btn-xs" onclick="addTodo()">+ 添加待办</button>
+      </div>
+      <div id="todo-list" class="space-y-2 max-h-80 overflow-y-auto"></div>
+    </div>
+  </div>`;
+  if (S.selDate) pickDate(S.selDate);
+}
+
+function pickDate(ds) {
+  S.selDate = ds;
+  const lbl = document.getElementById('todo-label');
+  if (lbl) lbl.textContent = '📌 '+ds;
+  const list = document.getElementById('todo-list');
+  if (!list) return;
+  const tds = S.todos.filter(t=>t.date===ds);
+  if (!tds.length) {
+    list.innerHTML = '<p class="text-sm py-6 text-center" style="color:var(--sub)">暂无待办事项 ✨</p>';
+    return;
+  }
+  list.innerHTML = tds.map(t => `
+    <div class="flex items-center gap-2 p-2.5 rounded-xl transition-all ${t.done?'opacity-50':''}" style="background:var(--hover)">
+      <input type="checkbox" ${t.done?'checked':''} onchange="togTodo('${t.id}')">
+      <span class="flex-1 text-sm ${t.done?'line-through':''}" style="color:${t.done?'var(--sub)':'var(--text)'}">${esc(t.text)}</span>
+      <button class="btn btn-danger btn-xs" onclick="delTodo('${t.id}')">✕</button>
+    </div>`).join('');
+}
+
+function addTodo() {
+  if (!S.selDate) { toast('请先在日历中选择一个日期','error'); return; }
+  modal('添加待办 · '+S.selDate, `<input class="input" id="todo-text" placeholder="输入待办内容..." autofocus>`, () => {
+    const text = document.getElementById('todo-text').value.trim();
+    if (!text) { toast('内容不能为空','error'); return; }
+    S.todos.push({id:uid(), date:S.selDate, text, done:false});
+    save('todos'); renderCal(); toast('已添加 ✅');
+  });
+}
+function togTodo(id) { const t = S.todos.find(x=>x.id===id); if (t) { t.done=!t.done; save('todos'); renderCal(); } }
+function delTodo(id) { if(!confirm('确定删除这个待办吗？'))return; S.todos=S.todos.filter(x=>x.id!==id); save('todos'); renderCal(); toast('已删除'); }
+
+// ==================== 2. TASK BOARD ====================
+// Data: S.tasks = [{id, name, category, image, video, createdAt, checkins:[{id, date, text, image}]}]
+// S.taskCategories = ['默认','工作','学习','生活','健身']
+// S.taskId = currently open task id (null = list view)
+
+function renderTasks() {
+  if (S.taskId) { renderTaskDetail(); return; }
+  const panel = document.getElementById('panel-tasks');
+
+  // Group tasks by category
+  const groups = {};
+  S.taskCategories.forEach(c => { groups[c] = []; });
+  S.tasks.forEach(t => {
+    const cat = t.category || '默认';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(t);
+  });
+
+  let html = '';
+  for (const [cat, tasks] of Object.entries(groups)) {
+    if (tasks.length === 0) continue;
+    html += `<div class="mb-4">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="cat-badge">${esc(cat)}</span>
+        <span class="text-xs" style="color:var(--sub)">${tasks.length}个任务</span>
+      </div>
+      <div class="space-y-2">`;
+    tasks.forEach(t => {
+      const checks = t.checkins||[];
+      const lastCheck = checks.length ? checks[checks.length-1] : null;
+      html += `<div class="card p-3.5 slide-up cursor-pointer" onclick="openTask('${t.id}')">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-semibold text-sm">${esc(t.name)}</span>
+              ${t.image?`<span class="file-pill file-pill-img">🖼 图</span>`:''}
+              ${t.video?`<span class="file-pill file-pill-vid">🎬 视频</span>`:''}
+            </div>
+            <div class="flex items-center gap-3 mt-1.5 text-xs" style="color:var(--sub)">
+              <span>📅 ${t.createdAt}</span>
+              <span>✅ 打卡 ${checks.length} 次</span>
+              ${lastCheck?`<span>🕐 最近: ${lastCheck.date}</span>`:''}
+            </div>
+          </div>
+          <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delTask('${t.id}')">✕</button>
+        </div>
+      </div>`;
+    });
+    html += '</div></div>';
+  }
+
+  if (!S.tasks.length) html = '<p class="text-center py-12 slide-up" style="color:var(--sub)">还没有任务，创建一个开始吧 ✅</p>';
+
+  panel.innerHTML = `<div class="slide-up">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg">✅ 任务栏</h3>
+      <div class="flex gap-2">
+        <button class="btn btn-ghost btn-sm" onclick="manageCats()">⚙ 分类</button>
+        <button class="btn btn-primary btn-sm" onclick="addTask()">+ 新建任务</button>
+      </div>
+    </div>
+    ${html}
+  </div>`;
+}
+
+function renderTaskDetail() {
+  const panel = document.getElementById('panel-tasks');
+  const t = S.tasks.find(x=>x.id===S.taskId);
+  if (!t) { S.taskId=null; renderTasks(); return; }
+  if (!t.checkins) t.checkins = [];
+
+  let checksHTML = [...t.checkins].reverse().map(c => `
+    <div class="card p-3 slide-up">
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background:var(--accent-light);color:var(--accent)">✅ ${c.date}</span>
+        <button class="btn btn-danger btn-xs" onclick="delCheckin('${t.id}','${c.id}')">✕</button>
+      </div>
+      ${c.text?`<p class="text-sm whitespace-pre-wrap">${esc(c.text)}</p>`:''}
+      ${c.image?`<img src="${c.image}" class="media-thumb mt-2 max-w-full max-h-48" onclick="window.open('${c.image}')" alt="打卡图片">`:''}
+    </div>`).join('');
+  if (!checksHTML) checksHTML = '<p class="text-center py-8 text-sm" style="color:var(--sub)">还没有打卡记录，开始第一次打卡吧 💪</p>';
+
+  // Build streak
+  const streak = calcStreak(t.checkins);
+
+  panel.innerHTML = `<div class="slide-up space-y-4">
+    <div class="flex items-center gap-2">
+      <button class="btn btn-ghost btn-sm" onclick="S.taskId=null;renderTasks()">◀ 返回</button>
+      <span class="font-bold text-lg">${esc(t.name)}</span>
+      <span class="cat-badge">${esc(t.category||'默认')}</span>
+    </div>
+
+    <div class="card p-4">
+      <div class="grid grid-cols-3 gap-3 text-center mb-3">
+        <div class="p-2.5 rounded-xl" style="background:var(--accent-light)">
+          <div class="text-lg font-bold" style="color:var(--accent)">${t.checkins.length}</div>
+          <div class="text-xs" style="color:var(--sub)">总打卡</div>
+        </div>
+        <div class="p-2.5 rounded-xl" style="background:var(--accent-light)">
+          <div class="text-lg font-bold" style="color:var(--accent)">${streak}</div>
+          <div class="text-xs" style="color:var(--sub)">连续天数</div>
+        </div>
+        <div class="p-2.5 rounded-xl" style="background:var(--accent-light)">
+          <div class="text-lg font-bold" style="color:var(--accent)">${fmt(new Date())===fmt(new Date(t.checkins[t.checkins.length-1]?.date||''))?'🔥':'—'}</div>
+          <div class="text-xs" style="color:var(--sub)">今日打卡</div>
+        </div>
+      </div>
+      <div class="text-xs" style="color:var(--sub)">创建于 ${t.createdAt}</div>
+    </div>
+
+    ${(t.image||t.video)?`
+    <div class="card p-4">
+      <h4 class="font-semibold text-sm mb-2">📎 附件</h4>
+      <div class="flex gap-3 flex-wrap">
+        ${t.image?`<img src="${t.image}" class="media-thumb max-w-full max-h-48" onclick="window.open('${t.image}')" alt="任务图片">`:''}
+        ${t.video?`<video src="${t.video}" controls class="media-thumb max-w-full" style="max-height:200px"></video>`:''}
+      </div>
+    </div>`:''}
+
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h4 class="font-bold text-sm">📝 打卡心得</h4>
+        <button class="btn btn-primary btn-sm" onclick="addCheckin('${t.id}')">+ 打卡</button>
+      </div>
+      <div class="space-y-2">${checksHTML}</div>
+    </div>
+  </div>`;
+}
+
+function calcStreak(checkins) {
+  if (!checkins.length) return 0;
+  const dates = [...new Set(checkins.map(c=>c.date))].sort();
+  let streak = 1;
+  for (let i = dates.length-1; i > 0; i--) {
+    const prev = new Date(dates[i-1]+'T00:00:00');
+    const cur = new Date(dates[i]+'T00:00:00');
+    const diff = (cur.getTime()-prev.getTime())/86400000;
+    if (Math.round(diff) === 1) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function openTask(id) { S.taskId=id; renderTasks(); }
+
+function addTask() {
+  modal('新建任务', `
+    <div class="space-y-3">
+      <input class="input" id="tk-name" placeholder="任务名称 *" autofocus>
+      <div class="flex gap-2 items-end">
+        <select class="input flex-1" id="tk-cat">${S.taskCategories.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+        <button class="btn btn-ghost btn-sm flex-shrink-0" onclick="addCategory()" type="button">+ 新分类</button>
+      </div>
+      <div>
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选）</label>
+        <input type="file" accept="image/*" id="tk-image" class="text-xs" style="width:100%">
+      </div>
+      <div>
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">视频（可选）</label>
+        <input type="file" accept="video/*" id="tk-video" class="text-xs" style="width:100%">
+      </div>
+    </div>`, () => {
+    const name = document.getElementById('tk-name').value.trim();
+    if (!name) { toast('名称不能为空','error'); return; }
+    const cat = document.getElementById('tk-cat').value;
+    const imgFile = document.getElementById('tk-image').files[0];
+    const vidFile = document.getElementById('tk-video').files[0];
+
+    const createTask = (imgData, vidData) => {
+      S.tasks.push({id:uid(), name, category:cat, image:imgData||'', video:vidData||'', createdAt:fmt(new Date()), checkins:[]});
+      save('tasks'); renderTasks(); toast('任务已创建 ✅');
+    };
+
+    const readFile = (file) => new Promise((resolve) => {
+      const r = new FileReader(); r.onload=()=>resolve(r.result); r.onerror=()=>resolve('');
+      r.readAsDataURL(file);
+    });
+
+    if (imgFile || vidFile) {
+      Promise.all([
+        imgFile?readFile(imgFile):Promise.resolve(''),
+        vidFile?readFile(vidFile):Promise.resolve('')
+      ]).then(([img,vid])=>createTask(img,vid));
+    } else {
+      createTask('','');
+    }
+  }, true);
+}
+
+function addCategory() {
+  const name = prompt('输入新分类名称：');
+  if (!name || !name.trim()) return;
+  const cn = name.trim();
+  if (S.taskCategories.includes(cn)) { toast('分类已存在','info'); return; }
+  S.taskCategories.push(cn);
+  save('taskCategories');
+  // Refresh the modal
+  const sel = document.getElementById('tk-cat');
+  if (sel) { sel.innerHTML = S.taskCategories.map(c=>`<option value="${c}"${c===cn?' selected':''}>${c}</option>`).join(''); }
+  toast('分类已添加 📁');
+}
+
+function manageCats() {
+  modal('管理分类', `
+    <div class="space-y-2 mb-3">
+      ${S.taskCategories.map(c => `<div class="flex items-center justify-between p-2 rounded-lg" style="background:var(--hover)"><span class="text-sm cat-badge">${esc(c)}</span><button class="btn btn-danger btn-xs" onclick="delCat('${esc(c).replace(/'/g,"\\'")}')">✕</button></div>`).join('')}
+    </div>
+    <div class="flex gap-2"><input class="input flex-1" id="new-cat-name" placeholder="新分类名称"><button class="btn btn-primary btn-sm" onclick="addCatInline()">添加</button></div>
+  `, ()=>{}, true);
+  // Override save button to just close
+  document.getElementById('modal-save').onclick = closeModal;
+}
+
+function delCat(cat) {
+  if (cat==='默认') { toast('不能删除默认分类','error'); return; }
+  S.taskCategories = S.taskCategories.filter(c=>c!==cat);
+  S.tasks.forEach(t => { if (t.category===cat) t.category='默认'; });
+  save('taskCategories'); save('tasks');
+  closeModal(); manageCats(); // refresh modal
+  renderTasks(); toast('分类已删除，任务移至默认');
+}
+
+function addCatInline() {
+  const input = document.getElementById('new-cat-name');
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) return;
+  if (S.taskCategories.includes(name)) { toast('分类已存在','info'); return; }
+  S.taskCategories.push(name);
+  save('taskCategories');
+  closeModal(); manageCats(); // refresh
+  toast('分类已添加 📁');
+}
+
+function delTask(id) {
+  if (!confirm('确定删除这个任务及其所有打卡记录吗？')) return;
+  S.tasks = S.tasks.filter(t=>t.id!==id);
+  if (S.taskId===id) S.taskId=null;
+  save('tasks'); renderTasks(); toast('已删除');
+}
+
+function addCheckin(taskId) {
+  const now = new Date();
+  const ds = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  modal('打卡 · 记录心得', `
+    <div class="space-y-3">
+      <input class="input" type="datetime-local" id="ck-date" value="${ds}">
+      <textarea class="input" id="ck-text" placeholder="记录心得、想法..." rows="3" autofocus></textarea>
+      <div>
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选）</label>
+        <input type="file" accept="image/*" id="ck-image" class="text-xs" style="width:100%">
+      </div>
+    </div>`, () => {
+    const text = document.getElementById('ck-text').value.trim();
+    const fi = document.getElementById('ck-image');
+    const date = document.getElementById('ck-date').value.slice(0,10);
+    const task = S.tasks.find(t=>t.id===taskId);
+    if (!task) return;
+
+    const saveIt = (img) => {
+      if (!task.checkins) task.checkins = [];
+      task.checkins.push({id:uid(), date, text, image:img||''});
+      save('tasks'); renderTaskDetail(); toast('打卡成功 🔥');
+    };
+
+    if (fi.files&&fi.files[0]) {
+      const r = new FileReader();
+      r.onload=()=>saveIt(r.result);
+      r.readAsDataURL(fi.files[0]);
+    } else { saveIt(''); }
+  });
+}
+
+function delCheckin(taskId, checkinId) {
+  if (!confirm('确定删除这条打卡记录吗？')) return;
+  const t = S.tasks.find(x=>x.id===taskId);
+  if (t) { t.checkins = (t.checkins||[]).filter(c=>c.id!==checkinId); save('tasks'); renderTaskDetail(); toast('打卡已删除'); }
+}
+
+// ==================== 3. COUNTDOWN ====================
+// S.anniversaries = [{id, name, date, type, mode:'countdown'|'countup', note}]
+// Existing data without `mode` defaults to 'countdown'
+
+function renderCD() {
+  const panel = document.getElementById('panel-countdown');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const CIRCUM = 2*Math.PI*22;
+
+  // Normalize: existing anniversaries without mode → 'countdown'
+  S.anniversaries.forEach(a => { if (!a.mode) a.mode = 'countdown'; });
+
+  const nextDate = (ds) => {
+    const [y,m,d] = ds.split('-').map(Number);
+    const thisYear = new Date(today.getFullYear(), m-1, d);
+    if (thisYear >= today) return thisYear;
+    return new Date(today.getFullYear()+1, m-1, d);
+  };
+
+  // Sort: today's items first, then countdown (nearest first), then countup (longest first)
+  const sorted = [...S.anniversaries].sort((a,b) => {
+    const ma = a.mode||'countdown'; const mb = b.mode||'countdown';
+    const isTodayA = isToday(a); const isTodayB = isToday(b);
+    if (isTodayA && !isTodayB) return -1;
+    if (!isTodayA && isTodayB) return 1;
+    if (ma !== mb) return ma==='countdown' ? -1 : 1;
+    if (ma === 'countdown') return nextDate(a.date).getTime() - nextDate(b.date).getTime();
+    // countup: longest duration first
+    const da = Math.ceil((today.getTime() - new Date(a.date+'T00:00:00').getTime())/86400000);
+    const db = Math.ceil((today.getTime() - new Date(b.date+'T00:00:00').getTime())/86400000);
+    return db - da;
+  });
+
+  function isToday(a) {
+    const mode = a.mode||'countdown';
+    if (mode==='countdown') return nextDate(a.date).getTime()===today.getTime();
+    // countup: check if month+day matches today
+    const [y,m,d] = a.date.split('-').map(Number);
+    return today.getMonth()===m-1 && today.getDate()===d;
+  }
+
+  function renderCard(a) {
+    const mode = a.mode||'countdown';
+    const [y,m,d] = a.date.split('-').map(Number);
+    const origin = new Date(y, m-1, d);
+    let diff, label, pct, ringColor, icon;
+
+    if (mode === 'countdown') {
+      const nd = nextDate(a.date);
+      diff = Math.ceil((nd.getTime()-today.getTime())/86400000);
+      label = diff===0 ? '🎉 就是今天！' : `还有 <b>${diff}</b> 天`;
+      pct = Math.min(100, Math.max(0, Math.round((365-diff)/365*100)));
+      ringColor = 'var(--accent)';
+      icon = diff===0 ? '🎉' : diff+'d';
+    } else {
+      // countup: days since original date
+      diff = Math.floor((today.getTime()-origin.getTime())/86400000);
+      if (diff < 0) diff = 0; // future date → treat as 0
+      // Ring: how far through the current year since the last anniversary
+      const lastAnn = new Date(today.getFullYear(), m-1, d);
+      const daysSinceLastAnn = lastAnn <= today
+        ? Math.floor((today.getTime()-lastAnn.getTime())/86400000)
+        : Math.floor((today.getTime()-new Date(today.getFullYear()-1,m-1,d).getTime())/86400000);
+      pct = Math.min(100, Math.round(daysSinceLastAnn/365*100));
+      label = diff===0 ? '🎉 就是今天！' : `已走过 <b>${diff.toLocaleString()}</b> 天`;
+      ringColor = '#60a5fa';
+      icon = diff===0 ? '🎉' : (diff>999 ? Math.floor(diff/365)+'y' : diff+'d');
+    }
+
+    return `<div class="card p-4 slide-up flex items-center gap-4 flex-wrap sm:flex-nowrap">
+      <div class="relative w-14 h-14 flex-shrink-0 flex items-center justify-center">
+        <svg class="w-14 h-14 -rotate-90"><circle cx="28" cy="28" r="22" fill="none" class="cd-ring-bg" stroke-width="4"/><circle cx="28" cy="28" r="22" fill="none" stroke="${ringColor}" stroke-width="4" stroke-linecap="round" style="stroke-dasharray:${CIRCUM};stroke-dashoffset:${CIRCUM*(1-pct/100)};transition:stroke-dashoffset .8s ease-out"/></svg>
+        <span class="absolute text-xs font-bold" style="color:${ringColor}">${icon}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold">${esc(a.name)}
+          <span class="text-xs px-2 py-0.5 rounded-full" style="background:${mode==='countup'?'#dbeafe':'var(--accent-light)'};color:${mode==='countup'?'#1e40af':'var(--accent)'}">${mode==='countup'?'📈 正数':'⏳ 倒数'}</span>
+          <span class="text-xs px-2 py-0.5 rounded-full" style="background:var(--hover);color:var(--sub)">${ANN_TYPES[a.type]||'📌'}</span>
+        </div>
+        <div class="text-xs mt-0.5" style="color:var(--sub)">${a.date} · ${label}</div>
+        ${a.note?`<div class="text-xs mt-0.5 opacity-70" style="color:var(--sub)">${esc(a.note)}</div>`:''}
+      </div>
+      <button class="btn btn-danger btn-xs" onclick="delAnn('${a.id}')">✕</button>
+    </div>`;
+  }
+
+  // Render with section headers
+  const cdown = sorted.filter(a=>(a.mode||'countdown')==='countdown');
+  const cup = sorted.filter(a=>a.mode==='countup');
+  let html = '';
+
+  if (cdown.length) {
+    html += `<div class="mb-2 mt-1"><span class="text-xs font-bold px-3 py-1 rounded-full" style="background:var(--accent-light);color:var(--accent)">⏳ 倒计时 · 期待未来</span></div>`;
+    html += cdown.map(renderCard).join('');
+  }
+  if (cup.length) {
+    html += `<div class="mb-2 mt-4"><span class="text-xs font-bold px-3 py-1 rounded-full" style="background:#dbeafe;color:#1e40af">📈 正数纪念 · 已走过的日子</span></div>`;
+    html += cup.map(renderCard).join('');
+  }
+  if (!html) html = '<p class="text-center py-12 slide-up" style="color:var(--sub)">还没有纪念日，快来添加一个 💝</p>';
+
+  panel.innerHTML = `<div class="card p-4 slide-up">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg">⏳ 纪念日</h3>
+      <button class="btn btn-primary btn-sm" onclick="addAnn()">+ 添加纪念日</button>
+    </div>
+    <div class="space-y-3">${html}</div>
+  </div>`;
+}
+
+function addAnn() {
+  modal('添加纪念日', `
+    <div class="space-y-3">
+      <input class="input" id="ann-name" placeholder="名称 *" autofocus>
+      <div class="flex gap-2">
+        <input class="input flex-1" type="date" id="ann-date" value="${fmt(new Date())}">
+      </div>
+      <div class="flex gap-2" id="ann-mode-bar">
+        <div class="toggle-opt active" data-mode="countdown" onclick="setAnnMode('countdown')">⏳ 倒计时</div>
+        <div class="toggle-opt" data-mode="countup" onclick="setAnnMode('countup')">📈 正数（已过）</div>
+      </div>
+      <select class="input" id="ann-type">${Object.entries(ANN_TYPES).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
+      <input class="input" id="ann-note" placeholder="备注（可选）">
+    </div>`, () => {
+    const name = document.getElementById('ann-name').value.trim();
+    if (!name) { toast('名称不能为空','error'); return; }
+    S.anniversaries.push({
+      id:uid(), name,
+      date:document.getElementById('ann-date').value,
+      mode:window._annMode||'countdown',
+      type:document.getElementById('ann-type').value,
+      note:document.getElementById('ann-note').value.trim()
+    });
+    save('anniversaries'); renderCD(); toast('已添加 💝');
+  });
+}
+function setAnnMode(mode) {
+  window._annMode = mode;
+  document.querySelectorAll('#ann-mode-bar .toggle-opt').forEach(el => {
+    el.classList.toggle('active', el.dataset.mode===mode);
+  });
+}
+function delAnn(id) { if(!confirm('确定删除这个纪念日吗？'))return; S.anniversaries=S.anniversaries.filter(a=>a.id!==id); save('anniversaries'); renderCD(); toast('已删除'); }
+
+// ==================== 4. FINANCE ====================
+let finTab = 'detail'; // 'detail' | 'stats'
+
+function renderFin() {
+  const now = new Date();
+  if (S.finYear===null) { S.finYear=now.getFullYear(); S.finMonth=now.getMonth(); }
+  const panel = document.getElementById('panel-finance');
+  const ms = `${S.finYear}-${String(S.finMonth+1).padStart(2,'0')}`;
+  const txs = S.transactions.filter(t=>t.date.startsWith(ms));
+  const inc = txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const bal = inc-exp;
+
+  // ---- Detail rows ----
+  let rows = [...txs].reverse().map(t => `
+    <div class="flex items-center gap-3 p-2.5 rounded-xl slide-up" style="background:var(--hover)">
+      <span class="text-lg">${t.type==='income'?'💰':'💸'}</span>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-medium">${esc(t.category)}${t.note?' · '+esc(t.note):''}</div>
+        <div class="text-xs" style="color:var(--sub)">${t.date}</div>
+      </div>
+      <span class="font-bold text-sm" style="color:${t.type==='income'?'var(--green)':'var(--red)'}">${t.type==='income'?'+':'-'}¥${t.amount.toFixed(2)}</span>
+      <button class="btn btn-danger btn-xs" onclick="delTx('${t.id}')">✕</button>
+    </div>`).join('');
+  if (!rows) rows = '<p class="text-center py-8 text-sm" style="color:var(--sub)">本月暂无记录 ✨</p>';
+
+  // ---- Stats ----
+  const barColors = ['#ec4899','#f472a6','#fb923c','#a78bfa','#34d399','#60a5fa','#fbbf24','#f87171','#818cf8','#2dd4bf'];
+
+  // Expense category breakdown
+  const expByCat = {};
+  txs.filter(t=>t.type==='expense').forEach(t => {
+    expByCat[t.category] = (expByCat[t.category]||0) + t.amount;
+  });
+  const expEntries = Object.entries(expByCat).sort((a,b)=>b[1]-a[1]);
+  const maxExp = expEntries.length ? expEntries[0][1] : 1;
+  let expBars = expEntries.map(([cat,amt],i) => `
+    <div class="flex items-center gap-2 text-xs">
+      <span class="w-12 flex-shrink-0 text-right" style="color:var(--sub)">${esc(cat)}</span>
+      <div class="flex-1 h-5 rounded-full relative overflow-hidden" style="background:var(--hover)">
+        <div class="h-full rounded-full absolute left-0 top-0 transition-all" style="width:${Math.max(3,Math.round(amt/maxExp*100))}%;background:${barColors[i%barColors.length]}"></div>
+      </div>
+      <span class="w-16 flex-shrink-0 font-medium">¥${amt.toFixed(0)}</span>
+    </div>`).join('');
+  if (!expBars) expBars = '<p class="text-xs py-4 text-center" style="color:var(--sub)">本月无支出</p>';
+
+  // Income category breakdown
+  const incByCat = {};
+  txs.filter(t=>t.type==='income').forEach(t => {
+    incByCat[t.category] = (incByCat[t.category]||0) + t.amount;
+  });
+  const incEntries = Object.entries(incByCat).sort((a,b)=>b[1]-a[1]);
+  const maxInc = incEntries.length ? incEntries[0][1] : 1;
+  let incBars = incEntries.map(([cat,amt],i) => `
+    <div class="flex items-center gap-2 text-xs">
+      <span class="w-12 flex-shrink-0 text-right" style="color:var(--sub)">${esc(cat)}</span>
+      <div class="flex-1 h-5 rounded-full relative overflow-hidden" style="background:var(--hover)">
+        <div class="h-full rounded-full absolute left-0 top-0 transition-all" style="width:${Math.max(3,Math.round(amt/maxInc*100))}%;background:${barColors[(i+5)%barColors.length]}"></div>
+      </div>
+      <span class="w-16 flex-shrink-0 font-medium">¥${amt.toFixed(0)}</span>
+    </div>`).join('');
+  if (!incBars) incBars = '<p class="text-xs py-4 text-center" style="color:var(--sub)">本月无收入</p>';
+
+  // Last 6 months trend
+  const trendMonths = [];
+  for (let i=5;i>=0;i--) {
+    let m = S.finMonth-i; let y = S.finYear;
+    while (m<0) { m+=12; y--; }
+    trendMonths.push({y,m,ms:`${y}-${String(m+1).padStart(2,'0')}`});
+  }
+  const trendData = trendMonths.map(tm => {
+    const mt = S.transactions.filter(t=>t.date.startsWith(tm.ms));
+    return {
+      label: `${tm.m+1}月`,
+      inc: mt.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0),
+      exp: mt.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0),
+    };
+  });
+  const trendMax = Math.max(...trendData.map(d=>Math.max(d.inc,d.exp)), 1);
+  let trendHTML = trendData.map(d => `
+    <div class="flex items-end gap-1 h-20 px-0.5">
+      <div class="flex flex-col items-center flex-1 justify-end h-full">
+        <span class="text-xs font-medium" style="color:var(--green)">¥${d.inc>999?(d.inc/1000).toFixed(1)+'k':d.inc.toFixed(0)}</span>
+        <div class="w-full max-w-[24px] rounded-t-sm transition-all" style="height:${Math.max(2,Math.round(d.inc/trendMax*70))}px;background:var(--green);opacity:.7"></div>
+      </div>
+      <div class="flex flex-col items-center flex-1 justify-end h-full">
+        <span class="text-xs font-medium" style="color:var(--red)">¥${d.exp>999?(d.exp/1000).toFixed(1)+'k':d.exp.toFixed(0)}</span>
+        <div class="w-full max-w-[24px] rounded-t-sm transition-all" style="height:${Math.max(2,Math.round(d.exp/trendMax*70))}px;background:var(--red);opacity:.7"></div>
+      </div>
+      <div class="text-xs w-full text-center mt-2" style="color:var(--sub)">${d.label}</div>
+    </div>`).join('');
+
+  const statsHTML = `<div class="space-y-4">
+    <div class="card p-4">
+      <h4 class="font-semibold text-sm mb-3">📊 支出分类</h4>
+      <div class="space-y-1.5">${expBars}</div>
+    </div>
+    <div class="card p-4">
+      <h4 class="font-semibold text-sm mb-3">💰 收入来源</h4>
+      <div class="space-y-1.5">${incBars}</div>
+    </div>
+    <div class="card p-4">
+      <h4 class="font-semibold text-sm mb-3">📈 近6月趋势 <span class="font-normal text-xs" style="color:var(--sub)"><span style="color:var(--green)">■</span> 收入 <span style="color:var(--red)">■</span> 支出</span></h4>
+      <div class="flex justify-around items-end">${trendHTML}</div>
+    </div>
+  </div>`;
+
+  const isDetail = finTab==='detail';
+  panel.innerHTML = `<div class="space-y-4 slide-up">
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3">
+        <button class="btn btn-ghost btn-sm" onclick="S.finMonth--;if(S.finMonth<0){S.finMonth=11;S.finYear--};renderFin()">◀</button>
+        <span class="font-bold">${MONTHS[S.finMonth]} ${S.finYear}</span>
+        <button class="btn btn-ghost btn-sm" onclick="S.finMonth++;if(S.finMonth>11){S.finMonth=0;S.finYear++};renderFin()">▶</button>
+      </div>
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div class="p-3 rounded-xl" style="background:var(--accent-light)"><div class="text-xs" style="color:var(--sub)">收入</div><div class="font-bold" style="color:var(--green)">+¥${inc.toFixed(2)}</div></div>
+        <div class="p-3 rounded-xl" style="background:var(--accent-light)"><div class="text-xs" style="color:var(--sub)">支出</div><div class="font-bold" style="color:var(--red)">-¥${exp.toFixed(2)}</div></div>
+        <div class="p-3 rounded-xl" style="background:var(--accent-light)"><div class="text-xs" style="color:var(--sub)">结余</div><div class="font-bold" style="color:${bal>=0?'var(--green)':'var(--red)'}">¥${bal.toFixed(2)}</div></div>
+      </div>
+    </div>
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex gap-1" style="background:var(--hover);border-radius:2rem;padding:3px">
+          <button class="btn-xs" style="border-radius:2rem;border:none;cursor:pointer;background:${isDetail?'var(--accent)':'transparent'};color:${isDetail?'#fff':'var(--sub)'};transition:all var(--transition)" onclick="finTab='detail';renderFin()">📋 明细</button>
+          <button class="btn-xs" style="border-radius:2rem;border:none;cursor:pointer;background:${!isDetail?'var(--accent)':'transparent'};color:${!isDetail?'#fff':'var(--sub)'};transition:all var(--transition)" onclick="finTab='stats';renderFin()">📊 统计</button>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addTx()">+ 记一笔</button>
+      </div>
+      <div class="${isDetail?'':'hidden'} space-y-2 max-h-72 overflow-y-auto">${rows}</div>
+      <div class="${isDetail?'hidden':''}">${statsHTML}</div>
+    </div>
+  </div>`;
+}
+
+function setTxType(type) {
+  window._txType = type;
+  document.querySelectorAll('#tx-type-bar .toggle-opt').forEach(el => {
+    el.classList.toggle('active', el.dataset.tx===type);
+  });
+  const cat = document.getElementById('tx-cat');
+  if (cat) cat.innerHTML = (type==='income'?CAT_INCOME:CAT_EXPENSE).map(c=>`<option value="${c}">${c}</option>`).join('');
+}
+
+function addTx() {
+  window._txType = 'income';
+  modal('记一笔', `
+    <div class="space-y-3">
+      <div class="flex gap-2" id="tx-type-bar">
+        <div class="toggle-opt active" data-tx="income" onclick="setTxType('income')">💰 收入</div>
+        <div class="toggle-opt" data-tx="expense" onclick="setTxType('expense')">💸 支出</div>
+      </div>
+      <input class="input" type="number" id="tx-amount" placeholder="金额 *" step="0.01" min="0.01" autofocus>
+      <select class="input" id="tx-cat">${CAT_INCOME.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+      <input class="input" type="date" id="tx-date" value="${fmt(new Date())}">
+      <input class="input" id="tx-note" placeholder="备注（可选）">
+    </div>`, () => {
+    const amount = parseFloat(document.getElementById('tx-amount').value);
+    if (!amount || amount<=0) { toast('请输入有效金额','error'); return; }
+    S.transactions.push({id:uid(), date:document.getElementById('tx-date').value, type:window._txType||'income', amount, category:document.getElementById('tx-cat').value, note:document.getElementById('tx-note').value.trim()});
+    save('transactions'); renderFin(); toast('已记录 💰');
+  });
+}
+function delTx(id) { if(!confirm('确定删除这条记录吗？'))return; S.transactions=S.transactions.filter(t=>t.id!==id); save('transactions'); renderFin(); toast('已删除'); }
+
+// ==================== 5. ARCHIVE ====================
+function renderArc() {
+  if (S.archiveId) { renderArcDetail(); return; }
+  const panel = document.getElementById('panel-archive');
+  let html = S.archives.map(a => `
+    <div class="card p-4 slide-up cursor-pointer" onclick="openArc('${a.id}')">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-2xl">📂</span>
+          <div>
+            <div class="font-semibold">${esc(a.name)}</div>
+            <div class="text-xs" style="color:var(--sub)">${a.desc||''} · ${(a.clues||[]).length}条线索</div>
+          </div>
+        </div>
+        <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delArc('${a.id}')">✕</button>
+      </div>
+      <div class="text-xs mt-1" style="color:var(--sub)">创建于 ${a.createdAt}</div>
+    </div>`).join('');
+  if (!html) html = '<p class="text-center py-12 slide-up" style="color:var(--sub)">还没有档案夹，创建一个开始记录吧 📁</p>';
+  panel.innerHTML = `<div class="slide-up">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg">📁 我的档案</h3>
+      <button class="btn btn-primary btn-sm" onclick="addArc()">+ 新建档案</button>
+    </div>
+    <div class="space-y-3">${html}</div>
+  </div>`;
+}
+
+function renderArcDetail() {
+  const panel = document.getElementById('panel-archive');
+  const a = S.archives.find(x=>x.id===S.archiveId);
+  if (!a) { S.archiveId=null; renderArc(); return; }
+  if (!a.clues) a.clues = [];
+
+  // Expose for search filtering
+  window._arcClues = [...a.clues].sort((a,b)=>(b.time||'0').localeCompare(a.time||'0'));
+
+  function renderClueList(filter = '') {
+    const kw = filter.toLowerCase();
+    const filtered = window._arcClues.filter(c => {
+      if (!kw) return true;
+      return (c.text||'').toLowerCase().includes(kw) || (c.time||'').toLowerCase().includes(kw);
+    });
+    if (!filtered.length) {
+      return kw
+        ? '<p class="text-center py-8 text-sm" style="color:var(--sub)">没有匹配的线索 🔍</p>'
+        : '<p class="text-center py-8 text-sm" style="color:var(--sub)">还没有线索，点击添加第一条 ✨</p>';
+    }
+    return filtered.map(c => `
+      <div class="card p-3.5 slide-up">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background:var(--accent-light);color:var(--accent)">${c.time||'未记录时间'}</span>
+          <button class="btn btn-danger btn-xs" onclick="delClue('${c.id}')">✕</button>
+        </div>
+        ${c.text?`<p class="text-sm whitespace-pre-wrap">${esc(c.text)}</p>`:''}
+        ${c.image?`<img src="${c.image}" class="media-thumb mt-2 max-w-full max-h-64" onclick="window.open('${c.image}')" alt="线索图片">`:''}
+      </div>`).join('');
+  }
+
+  panel.innerHTML = `<div class="slide-up space-y-4">
+    <div class="flex items-center gap-2 flex-wrap">
+      <button class="btn btn-ghost btn-sm" onclick="S.archiveId=null;renderArc()">◀ 返回</button>
+      <span class="font-bold text-lg">📂 ${esc(a.name)}</span>
+      <button class="btn btn-sm flex-shrink-0" style="background:#dbeafe;color:#1e40af;border:none;border-radius:2rem" onclick="shareArchive()">🔗 分享</button>
+    </div>
+    ${a.desc?`<p class="text-sm" style="color:var(--sub)">${esc(a.desc)}</p>`:''}
+    <div class="flex items-center justify-between gap-2 flex-wrap">
+      <span class="text-sm flex-shrink-0" style="color:var(--sub)" id="clue-count">共 ${a.clues.length} 条线索</span>
+      <button class="btn btn-primary btn-sm" onclick="addClue()">+ 添加线索</button>
+    </div>
+    <div class="relative">
+      <input class="input" type="search" id="clue-search" placeholder="🔍 搜索线索关键词..." autocomplete="off"
+        oninput="document.getElementById('clue-results').innerHTML=renderClueListFn(this.value);document.getElementById('clue-count').textContent=((window._arcClues||[]).filter(c=>{const k=this.value.toLowerCase();return!k||(c.text||'').toLowerCase().includes(k)||(c.time||'').toLowerCase().includes(k)}).length)+' 条结果'">
+    </div>
+    <div class="space-y-3" id="clue-results">${renderClueList()}</div>
+  </div>`;
+  // Make the filter function globally accessible for the oninput handler
+  window.renderClueListFn = renderClueList;
+}
+
+function openArc(id) { S.archiveId=id; renderArc(); }
+function addArc() {
+  modal('新建档案', `<div class="space-y-3"><input class="input" id="arc-name" placeholder="档案名称 *" autofocus><input class="input" id="arc-desc" placeholder="描述（可选）"></div>`, () => {
+    const name = document.getElementById('arc-name').value.trim();
+    if (!name) { toast('名称不能为空','error'); return; }
+    S.archives.push({id:uid(), name, desc:document.getElementById('arc-desc').value.trim(), createdAt:fmt(new Date()), clues:[]});
+    save('archives'); renderArc(); toast('档案已创建 📁');
+  });
+}
+function delArc(id) {
+  if (!confirm('确定删除这个档案及其所有线索吗？')) return;
+  S.archives=S.archives.filter(a=>a.id!==id);
+  if (S.archiveId===id) S.archiveId=null;
+  save('archives'); renderArc(); toast('已删除');
+}
+function addClue() {
+  const now = new Date();
+  const ds = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  modal('添加线索', `
+    <div class="space-y-3">
+      <input class="input" type="datetime-local" id="clue-time" value="${ds}">
+      <textarea class="input" id="clue-text" placeholder="记录文字..." rows="3" autofocus></textarea>
+      <div>
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选）</label>
+        <input type="file" accept="image/*" id="clue-image" class="text-xs" style="width:100%">
+      </div>
+    </div>`, () => {
+    const text = document.getElementById('clue-text').value.trim();
+    const fi = document.getElementById('clue-image');
+    const time = document.getElementById('clue-time').value;
+    const arc = S.archives.find(a=>a.id===S.archiveId);
+    if (!arc) return;
+    const saveIt = (img) => {
+      arc.clues.push({id:uid(), time, text, image:img||''});
+      save('archives'); renderArcDetail(); toast('线索已添加 ✨');
+    };
+    if (fi.files&&fi.files[0]) {
+      const r = new FileReader();
+      r.onload=()=>saveIt(r.result);
+      r.readAsDataURL(fi.files[0]);
+    } else { saveIt(''); }
+  });
+}
+function delClue(clueId) {
+  if (!confirm('确定删除这条线索吗？')) return;
+  const a = S.archives.find(x=>x.id===S.archiveId);
+  if (a) { a.clues=a.clues.filter(c=>c.id!==clueId); save('archives'); renderArcDetail(); toast('线索已删除'); }
+}
+
+// ===== Archive Share =====
+function shareArchive() {
+  const a = S.archives.find(x=>x.id===S.archiveId);
+  if (!a) return;
+
+  // Build compact share data: strip large images (>100KB base64 ≈ 136KB text)
+  const shareData = {
+    name: a.name,
+    desc: a.desc||'',
+    createdAt: a.createdAt,
+    clues: (a.clues||[]).map(c => ({
+      time: c.time||'',
+      text: c.text||'',
+      image: (c.image||'').length < 140000 ? c.image : '', // skip large images
+    })),
+  };
+
+  try {
+    const json = JSON.stringify(shareData);
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    const url = location.origin + location.pathname + '#share=' + encoded;
+    navigator.clipboard.writeText(url).then(() => {
+      toast('分享链接已复制！📋');
+    }).catch(() => {
+      // Fallback: show in modal
+      modal('🔗 分享链接', `
+        <p class="text-xs mb-2" style="color:var(--sub)">复制以下链接分享给他人：</p>
+        <textarea class="input text-xs" rows="3" readonly onclick="this.select()" style="word-break:break-all">${esc(url)}</textarea>
+      `, ()=>{});
+    });
+  } catch(e) {
+    toast('数据太大，部分图片已省略后重试', 'info');
+    // Retry without images
+    shareData.clues.forEach(c => c.image = '');
+    const json = JSON.stringify(shareData);
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    const url = location.origin + location.pathname + '#share=' + encoded;
+    navigator.clipboard.writeText(url).then(() => toast('分享链接已复制！📋'));
+  }
+}
+
+// Check URL hash for shared archive on load
+function checkSharedArchive() {
+  const hash = location.hash;
+  if (!hash.startsWith('#share=')) return;
+  try {
+    const encoded = hash.slice(7);
+    const json = decodeURIComponent(escape(atob(encoded)));
+    const data = JSON.parse(json);
+    // Show shared archive in a read-only modal
+    showSharedArchive(data);
+    // Clean URL
+    history.replaceState(null, '', location.pathname);
+  } catch(e) { /* invalid share link, ignore */ }
+}
+
+function showSharedArchive(data) {
+  const cluesHTML = (data.clues||[]).sort((a,b)=>(b.time||'').localeCompare(a.time||'')).map(c => `
+    <div class="card p-3.5">
+      <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background:var(--accent-light);color:var(--accent)">${c.time||'未记录时间'}</span>
+      ${c.text?`<p class="text-sm mt-2 whitespace-pre-wrap">${esc(c.text)}</p>`:''}
+      ${c.image?`<img src="${c.image}" class="media-thumb mt-2 max-w-full max-h-48 rounded-xl" onclick="window.open('${c.image}')" alt="线索图片">`:''}
+    </div>`).join('') || '<p class="text-sm py-4 text-center" style="color:var(--sub)">暂无线索</p>';
+
+  modal(`📂 分享档案：${esc(data.name)}`, `
+    <div class="space-y-3">
+      ${data.desc?`<p class="text-sm" style="color:var(--sub)">${esc(data.desc)}</p>`:''}
+      <div class="text-xs" style="color:var(--sub)">创建于 ${data.createdAt} · ${(data.clues||[]).length} 条线索</div>
+      <div class="space-y-2 max-h-[50vh] overflow-y-auto">${cluesHTML}</div>
+    </div>
+  `, ()=>{}, true);
+  document.getElementById('modal-save').textContent = '关闭';
+  document.getElementById('modal-save').onclick = closeModal;
+}
+
+// ==================== 6. DIARY ====================
+// S.diaries = [{id, date, title, content, image, mood}]
+const MOODS = [
+  { emoji:'😊', label:'开心', color:'#fbbf24' },
+  { emoji:'💪', label:'充实', color:'#34d399' },
+  { emoji:'🤔', label:'思考', color:'#a78bfa' },
+  { emoji:'😴', label:'疲惫', color:'#94a3b8' },
+  { emoji:'😢', label:'难过', color:'#60a5fa' },
+  { emoji:'😡', label:'生气', color:'#f87171' },
+];
+
+function renderDiary() {
+  const panel = document.getElementById('panel-diary');
+  const sorted = [...S.diaries].sort((a,b)=>b.date.localeCompare(a.date));
+  const grouped = {};
+  sorted.forEach(d => {
+    const m = d.date.slice(0,7);
+    if (!grouped[m]) grouped[m] = [];
+    grouped[m].push(d);
+  });
+
+  let html = '';
+  for (const [month, entries] of Object.entries(grouped)) {
+    html += `<div class="mb-2 mt-1"><span class="text-xs font-bold px-3 py-1 rounded-full" style="background:var(--accent-light);color:var(--accent)">📅 ${month}</span></div>`;
+    html += entries.map(d => {
+      const mood = MOODS.find(m=>m.emoji===d.mood)||{};
+      return `<div class="card p-3.5 slide-up cursor-pointer" onclick="viewDiary('${d.id}')">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-lg">${d.mood||'📝'}</span>
+              <span class="font-semibold text-sm">${esc(d.title||'无标题')}</span>
+            </div>
+            <div class="text-xs mt-1 flex items-center gap-2" style="color:var(--sub)">
+              <span>${d.date}</span>
+              ${d.content?`<span class="truncate max-w-[200px]">— ${esc(d.content.slice(0,60))}${d.content.length>60?'...':''}</span>`:''}
+              ${d.image?`<span class="file-pill file-pill-img">🖼</span>`:''}
+            </div>
+          </div>
+          <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delDiary('${d.id}')">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  if (!sorted.length) html = '<p class="text-center py-12 slide-up" style="color:var(--sub)">还没有日记，写下今天的故事吧 📔</p>';
+
+  panel.innerHTML = `<div class="slide-up">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg">📔 日记本</h3>
+      <button class="btn btn-primary btn-sm" onclick="addDiary()">+ 写日记</button>
+    </div>
+    <div class="space-y-3">${html}</div>
+  </div>`;
+}
+
+function viewDiary(id) {
+  const d = S.diaries.find(x=>x.id===id);
+  if (!d) return;
+  const mood = MOODS.find(m=>m.emoji===d.mood)||{};
+  modal('📔 日记 · '+d.date, `
+    <div class="space-y-3">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl">${d.mood||'📝'}</span>
+        <span class="font-bold text-lg">${esc(d.title||'无标题')}</span>
+      </div>
+      ${d.content?`<p class="text-sm whitespace-pre-wrap leading-relaxed">${esc(d.content)}</p>`:'<p class="text-sm" style="color:var(--sub)">（无内容）</p>'}
+      ${d.image?`<img src="${d.image}" class="media-thumb mt-2 max-w-full max-h-64 rounded-xl" onclick="window.open('${d.image}')" alt="日记图片">`:''}
+    </div>
+  `, ()=>{}, true);
+  document.getElementById('modal-save').textContent = '关闭';
+  document.getElementById('modal-save').onclick = closeModal;
+}
+
+function addDiary() {
+  window._diaryMood = '😊';
+  modal('写日记', `
+    <div class="space-y-3">
+      <input class="input" type="date" id="dy-date" value="${fmt(new Date())}">
+      <input class="input" id="dy-title" placeholder="标题" autofocus>
+      <div class="flex gap-1.5 flex-wrap" id="dy-mood-bar">
+        ${MOODS.map(m => `<button class="btn btn-xs ${m.emoji===window._diaryMood?'btn-primary':'btn-ghost'}" onclick="window._diaryMood='${m.emoji}';document.querySelectorAll('#dy-mood-bar button').forEach(b=>{b.classList.toggle('btn-primary',b.textContent.startsWith('${m.emoji}'));b.classList.toggle('btn-ghost',!b.textContent.startsWith('${m.emoji}'))})" type="button">${m.emoji} ${m.label}</button>`).join('')}
+      </div>
+      <textarea class="input" id="dy-content" placeholder="今天发生了什么..." rows="5"></textarea>
+      <div>
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选）</label>
+        <input type="file" accept="image/*" id="dy-image" class="text-xs" style="width:100%">
+      </div>
+    </div>`, () => {
+    const date = document.getElementById('dy-date').value;
+    const title = document.getElementById('dy-title').value.trim();
+    const content = document.getElementById('dy-content').value.trim();
+    const fi = document.getElementById('dy-image');
+
+    const saveIt = (img) => {
+      S.diaries.push({id:uid(), date, title, content, image:img||'', mood:window._diaryMood||'😊'});
+      save('diaries'); renderDiary(); toast('日记已保存 📔');
+    };
+
+    if (fi.files&&fi.files[0]) {
+      const r = new FileReader(); r.onload=()=>saveIt(r.result); r.readAsDataURL(fi.files[0]);
+    } else { saveIt(''); }
+  }, true);
+}
+
+function delDiary(id) {
+  if (!confirm('确定删除这篇日记吗？')) return;
+  S.diaries = S.diaries.filter(d=>d.id!==id);
+  save('diaries'); renderDiary(); toast('已删除');
+}
+
+// ==================== 7. WISHLIST ====================
+// S.wishes = [{id, name, conditions: [{id, text, done}], messages: [{id, text, date}]}]
+let wishOpenId = null; // which wish detail is open (null = list)
+
+function renderWishes() {
+  if (wishOpenId) { renderWishDetail(); return; }
+  const panel = document.getElementById('panel-wishes');
+
+  let html = S.wishes.map(w => {
+    const conds = w.conditions||[];
+    const done = conds.filter(c=>c.done).length;
+    const total = conds.length;
+    return `<div class="card p-4 slide-up cursor-pointer" onclick="openWish('${w.id}')">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold">🌟 ${esc(w.name)}</div>
+          <div class="flex items-center gap-2 mt-1.5 flex-wrap">
+            <span class="text-xs px-2 py-0.5 rounded-full" style="background:var(--accent-light);color:var(--accent)">${done}/${total} 完成</span>
+            ${total>0?`<div class="flex-1 h-1.5 rounded-full min-w-[60px]" style="background:var(--hover)"><div class="h-full rounded-full transition-all" style="width:${total?Math.round(done/total*100):0}%;background:var(--accent)"></div></div>`:''}
+          </div>
+          ${total>0?`<div class="text-xs mt-1.5 space-y-0.5">${conds.slice(0,3).map(c=>`<div class="${c.done?'cond-done':''}">${c.done?'✅':'⬜'} ${esc(c.text)}</div>`).join('')}${total>3?`<span style="color:var(--sub)">…还有${total-3}项</span>`:''}</div>`:''}
+          ${(w.messages||[]).length>0?`<div class="text-xs mt-1" style="color:var(--sub)">💬 ${w.messages.length} 条留言</div>`:''}
+        </div>
+        <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delWish('${w.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  if (!html) html = '<p class="text-center py-12 slide-up" style="color:var(--sub)">还没有心愿，快来许个愿吧 🌟</p>';
+
+  panel.innerHTML = `<div class="slide-up">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg">🌟 心愿单</h3>
+      <button class="btn btn-primary btn-sm" onclick="addWish()">+ 许愿</button>
+    </div>
+    <div class="space-y-3">${html}</div>
+  </div>`;
+}
+
+function renderWishDetail() {
+  const panel = document.getElementById('panel-wishes');
+  const w = S.wishes.find(x=>x.id===wishOpenId);
+  if (!w) { wishOpenId=null; renderWishes(); return; }
+  if (!w.conditions) w.conditions = [];
+  if (!w.messages) w.messages = [];
+
+  const condsHTML = w.conditions.map(c => `
+    <div class="cond-item flex items-center gap-2 ${c.done?'cond-done':''}" onclick="togCond('${w.id}','${c.id}')">
+      <span class="text-base flex-shrink-0">${c.done?'✅':'⬜'}</span>
+      <span class="text-sm">${esc(c.text)}</span>
+    </div>`).join('');
+
+  const msgsHTML = [...w.messages].reverse().map(m => `
+    <div class="p-2.5 rounded-xl slide-up" style="background:var(--hover)">
+      <div class="flex items-center justify-between mb-0.5">
+        <span class="text-xs" style="color:var(--sub)">💬 ${m.date}</span>
+        <button class="btn btn-danger btn-xs" onclick="delWishMsg('${w.id}','${m.id}')">✕</button>
+      </div>
+      <p class="text-sm">${esc(m.text)}</p>
+    </div>`).join('');
+
+  panel.innerHTML = `<div class="slide-up space-y-4">
+    <div class="flex items-center gap-2">
+      <button class="btn btn-ghost btn-sm" onclick="wishOpenId=null;renderWishes()">◀ 返回</button>
+      <span class="font-bold text-lg">🌟 ${esc(w.name)}</span>
+    </div>
+
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h4 class="font-bold text-sm">📋 条件项</h4>
+        <button class="btn btn-primary btn-xs" onclick="addCond('${w.id}')">+ 添加条件</button>
+      </div>
+      ${condsHTML||'<p class="text-sm py-4 text-center" style="color:var(--sub)">还没有条件项，添加一个吧</p>'}
+    </div>
+
+    <div class="card p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h4 class="font-bold text-sm">💬 留言 (${w.messages.length})</h4>
+        <button class="btn btn-primary btn-xs" onclick="addWishMsg('${w.id}')">+ 留言</button>
+      </div>
+      <div class="space-y-2">${msgsHTML||'<p class="text-sm py-4 text-center" style="color:var(--sub)">还没有留言</p>'}</div>
+    </div>
+  </div>`;
+}
+
+function openWish(id) { wishOpenId=id; renderWishes(); }
+
+function addWish() {
+  modal('许愿', `
+    <div class="space-y-3">
+      <input class="input" id="wish-name" placeholder="心愿名称 *" autofocus>
+      <textarea class="input" id="wish-conds" placeholder="条件项（每行一个）" rows="3"></textarea>
+    </div>`, () => {
+    const name = document.getElementById('wish-name').value.trim();
+    if (!name) { toast('名称不能为空','error'); return; }
+    const condLines = document.getElementById('wish-conds').value.trim().split('\n').filter(Boolean);
+    S.wishes.push({
+      id:uid(), name,
+      conditions: condLines.map(t => ({id:uid(), text:t.trim(), done:false})),
+      messages: []
+    });
+    save('wishes'); renderWishes(); toast('心愿已许 🌟');
+  });
+}
+
+function addCond(wishId) {
+  modal('添加条件', `<input class="input" id="cond-text" placeholder="条件内容..." autofocus>`, () => {
+    const text = document.getElementById('cond-text').value.trim();
+    if (!text) { toast('内容不能为空','error'); return; }
+    const w = S.wishes.find(x=>x.id===wishId);
+    if (!w) return;
+    if (!w.conditions) w.conditions = [];
+    w.conditions.push({id:uid(), text, done:false});
+    save('wishes'); renderWishDetail(); toast('条件已添加 ✅');
+  });
+}
+
+function togCond(wishId, condId) {
+  const w = S.wishes.find(x=>x.id===wishId);
+  if (!w) return;
+  const c = (w.conditions||[]).find(x=>x.id===condId);
+  if (c) { c.done = !c.done; save('wishes'); renderWishDetail(); }
+}
+
+function addWishMsg(wishId) {
+  modal('添加留言', `<textarea class="input" id="wish-msg" placeholder="写下想说的话..." rows="3" autofocus></textarea>`, () => {
+    const text = document.getElementById('wish-msg').value.trim();
+    if (!text) { toast('内容不能为空','error'); return; }
+    const w = S.wishes.find(x=>x.id===wishId);
+    if (!w) return;
+    if (!w.messages) w.messages = [];
+    w.messages.push({id:uid(), text, date:fmt(new Date())});
+    save('wishes'); renderWishDetail(); toast('留言已添加 💬');
+  });
+}
+
+function delWishMsg(wishId, msgId) {
+  if (!confirm('确定删除这条留言吗？')) return;
+  const w = S.wishes.find(x=>x.id===wishId);
+  if (w) { w.messages = (w.messages||[]).filter(m=>m.id!==msgId); save('wishes'); renderWishDetail(); toast('留言已删除'); }
+}
+
+function delWish(id) {
+  if (!confirm('确定删除这个心愿吗？')) return;
+  S.wishes = S.wishes.filter(w=>w.id!==id);
+  if (wishOpenId===id) wishOpenId=null;
+  save('wishes'); renderWishes(); toast('已删除');
+}
+
+// ==================== 8. WAREHOUSE ====================
+// S.warehouseItems = [{id, mainCat, subCat, name, image, note, purchaseDate, expiryDate}]
+// S.warehouseSubCats = { '衣柜':['上衣','裤子'], '化妆品':[...], ... }
+// S.whCat = currently open main category (null = overview)
+// S.whSub = active sub-category filter string
+
+const WH_CATS = ['衣柜','化妆品','护肤品','食品','工具'];
+const WH_ICONS = { '衣柜':'👗', '化妆品':'💄', '护肤品':'🧴', '食品':'🍜', '工具':'🔧' };
+
+function renderWH() {
+  if (S.whCat) { renderWHDetail(); return; }
+  const panel = document.getElementById('panel-warehouse');
+  const today = fmt(new Date());
+
+  // Gather expiry warnings across all categories
+  const expWarn = [];
+  S.warehouseItems.forEach(item => {
+    if (item.expiryDate && item.expiryDate >= today) {
+      const days = Math.ceil((new Date(item.expiryDate+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+      if (days <= 30) expWarn.push({...item, days});
+    }
+  });
+  expWarn.sort((a,b)=>a.days-b.days);
+
+  let warnHTML = '';
+  if (expWarn.length) {
+    warnHTML = `<div class="card p-4 mb-4 slide-up" style="border-left:4px solid ${expWarn[0].days<=7?'var(--red)':'#f59e0b'}">
+      <div class="font-bold text-sm mb-2">⚠️ 临期/过期提醒</div>
+      <div class="space-y-1">${expWarn.map(e => `
+        <div class="flex items-center justify-between text-xs p-1.5 rounded-lg ${e.days<=0?'expiry-danger':e.days<=7?'expiry-danger':'expiry-warn'}">
+          <span>${WH_ICONS[e.mainCat]||'📦'} ${esc(e.name)} <span style="opacity:.7">(${e.mainCat})</span></span>
+          <span class="font-bold">${e.days<=0?'已过期！':e.days+'天后过期'}</span>
+        </div>`).join('')}</div>
+    </div>`;
+  }
+
+  const catCards = WH_CATS.map(cat => {
+    const items = S.warehouseItems.filter(i=>i.mainCat===cat);
+    const subCats = S.warehouseSubCats[cat]||[];
+    return `<div class="card p-4 slide-up cursor-pointer" onclick="S.whCat='${cat}';S.whSub='全部';renderWH()">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">${WH_ICONS[cat]}</span>
+          <div>
+            <div class="font-bold">${cat}</div>
+            <div class="text-xs" style="color:var(--sub)">${items.length} 件物品 · ${subCats.length} 个分类</div>
+          </div>
+        </div>
+        <span class="text-lg opacity-30">▶</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  panel.innerHTML = `<div class="slide-up">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg">🏠 仓库</h3>
+    </div>
+    ${warnHTML}
+    <div class="space-y-3">${catCards}</div>
+  </div>`;
+}
+
+function renderWHDetail() {
+  const panel = document.getElementById('panel-warehouse');
+  const cat = S.whCat;
+  const subCats = S.warehouseSubCats[cat]||[];
+  const allItems = S.warehouseItems.filter(i=>i.mainCat===cat);
+  const items = S.whSub==='全部' ? allItems : allItems.filter(i=>i.subCat===S.whSub);
+  const today = fmt(new Date());
+
+  // Expiry items within this category
+  const catExp = allItems.filter(i => i.expiryDate && new Date(i.expiryDate+'T00:00:00')-new Date(today+'T00:00:00') <= 30*86400000);
+
+  // Sub-category pills
+  const pills = ['全部',...subCats].map(s => `
+    <span class="subcat-pill ${S.whSub===s?'active':''}" onclick="S.whSub='${s}';renderWHDetail()">${s}</span>`).join('');
+
+  // Item grid
+  let grid = items.map(item => {
+    const isExp = item.expiryDate && new Date(item.expiryDate+'T00:00:00')-new Date(today+'T00:00:00') <= 30*86400000;
+    const isExpired = item.expiryDate && item.expiryDate < today;
+    return `<div class="wh-item" onclick="viewWHItem('${item.id}')">
+      ${item.image
+        ? `<img src="${item.image}" class="wh-thumb" alt="${esc(item.name)}">`
+        : `<div class="wh-thumb">${WH_ICONS[cat]||'📦'}</div>`}
+      <div class="text-xs font-medium mt-1.5 truncate">${esc(item.name)}</div>
+      <div class="text-xs" style="color:var(--sub)">${esc(item.subCat||'')}</div>
+      ${isExp?`<div class="text-xs mt-0.5 px-1.5 py-0.5 rounded-full ${isExpired?'expiry-danger':'expiry-warn'}" style="font-size:.65rem">${isExpired?'已过期':'临期'}</div>`:''}
+    </div>`;
+  }).join('');
+  if (!grid) grid = '<p class="text-center py-10 col-span-full" style="color:var(--sub)">这个分类下还没有物品 ✨</p>';
+
+  panel.innerHTML = `<div class="slide-up space-y-4">
+    <div class="flex items-center gap-2 flex-wrap">
+      <button class="btn btn-ghost btn-sm" onclick="S.whCat=null;S.whSub='全部';renderWH()">◀ 返回</button>
+      <span class="font-bold text-lg">${WH_ICONS[cat]} ${cat}</span>
+      <span class="text-xs" style="color:var(--sub)">${allItems.length}件</span>
+    </div>
+    ${catExp.length?`<div class="card p-3 slide-up" style="border-left:4px solid var(--red)"><div class="text-xs font-bold mb-1" style="color:var(--red)">⚠️ ${catExp.length} 件物品即将过期</div></div>`:''}
+    <div class="flex items-center justify-between flex-wrap gap-2">
+      <div class="flex gap-1.5 flex-wrap overflow-x-auto pb-1" style="max-width:100%">${pills}</div>
+      <div class="flex gap-1 flex-shrink-0">
+        <button class="btn btn-ghost btn-xs" onclick="addWHSubCat('${cat}')">+ 分类</button>
+        <button class="btn btn-primary btn-sm" onclick="addWHItem('${cat}')">+ 添加物品</button>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">${grid}</div>
+  </div>`;
+}
+
+function viewWHItem(id) {
+  const item = S.warehouseItems.find(x=>x.id===id);
+  if (!item) return;
+  const cat = item.mainCat;
+  modal(`${WH_ICONS[cat]||'📦'} ${esc(item.name)}`, `
+    <div class="space-y-3">
+      ${item.image?`<img src="${item.image}" class="rounded-xl max-w-full max-h-48 object-cover">`:''}
+      <div class="grid grid-cols-2 gap-2 text-sm">
+        <div><span style="color:var(--sub)">分类：</span>${esc(item.mainCat)} / ${esc(item.subCat||'无')}</div>
+        ${item.purchaseDate?`<div><span style="color:var(--sub)">购买日：</span>${item.purchaseDate}</div>`:''}
+        ${item.expiryDate?`<div><span style="color:var(--sub)">过期日：</span><span class="${item.expiryDate<fmt(new Date())?'expiry-danger':'expiry-warn'}" style="border-radius:.3rem;padding:.1rem .4rem">${item.expiryDate}</span></div>`:''}
+      </div>
+      ${item.note?`<div><span class="text-xs" style="color:var(--sub)">备注：</span><p class="text-sm">${esc(item.note)}</p></div>`:''}
+      <button class="btn btn-danger btn-sm w-full" onclick="delWHItem('${item.id}');closeModal()">🗑 删除此物品</button>
+    </div>
+  `, ()=>{}, true);
+  document.getElementById('modal-save').textContent = '关闭';
+  document.getElementById('modal-save').onclick = closeModal;
+}
+
+function addWHItem(cat) {
+  const subCats = S.warehouseSubCats[cat]||[];
+  modal(`添加物品 · ${cat}`, `
+    <div class="space-y-3">
+      <input class="input" id="whi-name" placeholder="物品名称 *" autofocus>
+      <select class="input" id="whi-subcat">${subCats.length?subCats.map(s=>`<option value="${s}">${s}</option>`).join(''):'<option value="">无分类</option>'}</select>
+      <div>
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选）</label>
+        <input type="file" accept="image/*" id="whi-image" class="text-xs" style="width:100%">
+      </div>
+      <input class="input" id="whi-note" placeholder="备注（可选）">
+      <div class="flex gap-2">
+        <input class="input" type="date" id="whi-purchase" placeholder="购买日期">
+        <input class="input" type="date" id="whi-expiry" placeholder="过期日期">
+      </div>
+    </div>`, () => {
+    const name = document.getElementById('whi-name').value.trim();
+    if (!name) { toast('名称不能为空','error'); return; }
+    const fi = document.getElementById('whi-image');
+    const data = {
+      id:uid(), mainCat:cat,
+      subCat:document.getElementById('whi-subcat').value,
+      name, note:document.getElementById('whi-note').value.trim(),
+      purchaseDate:document.getElementById('whi-purchase').value,
+      expiryDate:document.getElementById('whi-expiry').value,
+      image:''
+    };
+    const saveIt = (img) => { data.image=img||''; S.warehouseItems.push(data); save('warehouseItems'); renderWHDetail(); toast('已添加 ✅'); };
+    if (fi.files&&fi.files[0]) { const r=new FileReader(); r.onload=()=>saveIt(r.result); r.readAsDataURL(fi.files[0]); }
+    else saveIt('');
+  }, true);
+}
+
+function addWHSubCat(cat) {
+  const name = prompt(`为「${cat}」添加新分类名称：`);
+  if (!name||!name.trim()) return;
+  const cn = name.trim();
+  if (!S.warehouseSubCats[cat]) S.warehouseSubCats[cat] = [];
+  if (S.warehouseSubCats[cat].includes(cn)) { toast('分类已存在','info'); return; }
+  S.warehouseSubCats[cat].push(cn);
+  save('warehouseSubCats'); renderWHDetail(); toast('分类已添加 📁');
+}
+
+function delWHItem(id) {
+  if (!confirm('确定删除这个物品吗？')) return;
+  S.warehouseItems = S.warehouseItems.filter(x=>x.id!==id);
+  save('warehouseItems'); renderWHDetail(); toast('已删除');
+}
+
+// ==================== 9. AI LION ====================
+const AI_STATE = {
+  enabled: localStorage.getItem('wb-ai-enabled')==='1',
+  apiKey: localStorage.getItem('wb-ai-key')||'',
+  provider: localStorage.getItem('wb-ai-provider')||'openai',
+  model: localStorage.getItem('wb-ai-model')||'gpt-4o-mini',
+  lionVariant: parseInt(localStorage.getItem('wb-lion-variant')||'0'),
+  talkLevel: localStorage.getItem('wb-lion-level')||'mid', // high|mid|low
+  lastSpoke: 0,
+};
+
+const AI_ENDPOINTS = {
+  openai: 'https://api.openai.com/v1/chat/completions',
+  deepseek: 'https://api.deepseek.com/v1/chat/completions',
+  groq: 'https://api.groq.com/openai/v1/chat/completions',
+  custom: localStorage.getItem('wb-ai-endpoint')||'',
+};
+
+const LION_SYSTEM = `你是一只Q版小狮子助手，名字叫"小莱"。你的性格：俏皮鬼马、暖心可爱，偶尔撒娇卖萌但不过分。说话自然简短（1-3句），像真人朋友。用口语化中文，适当加emoji。你会主动提醒临期物品、夸赞用户完成任务、给予温暖鼓励。对不好的内容温柔拒绝。不要引导极端行为。`;
+
+// Draw SVG lion
+function drawLion(variant) {
+  const v = Math.abs(variant) % 5;
+  const skins = ['#fbbf24','#f59e0b','#f97316','#fb923c','#fcd34d'];
+  const manes = ['#d97706','#b45309','#ea580c','#c2410c','#eab308'];
+  const skin = skins[v];
+  const mane = manes[v];
+  const blush = variant % 3 === 0;
+  const wink = variant % 4 === 1;
+  const mouthOpen = variant % 3 === 2;
+  const bow = variant % 7 < 3;
+
+  let eyeR = wink
+    ? '<ellipse cx="27" cy="35" rx="4" ry="5" fill="#1e1b1e"/><ellipse cx="27" cy="33" rx="1.5" ry="2" fill="#fff"/><path d="M10 40 Q16 46 22 40" stroke="#1e1b1e" stroke-width="2" fill="none" stroke-linecap="round"/>'
+    : '<ellipse cx="18" cy="35" rx="4.5" ry="5.5" fill="#1e1b1e"/><ellipse cx="17" cy="33" rx="1.8" ry="2.5" fill="#fff"/><ellipse cx="32" cy="35" rx="4.5" ry="5.5" fill="#1e1b1e"/><ellipse cx="31" cy="33" rx="1.8" ry="2.5" fill="#fff"/>';
+
+  let mouth = mouthOpen
+    ? '<ellipse cx="25" cy="56" rx="5" ry="4" fill="#1e1b1e"/><ellipse cx="25" cy="53" rx="3.5" ry="2" fill="#f87171"/>'
+    : '<path d="M18 54 Q25 62 32 54" stroke="#1e1b1e" stroke-width="2" fill="none" stroke-linecap="round"/>';
+
+  return `<defs><radialGradient id="maneG" cx="50%" cy="50%"><stop offset="0%" stop-color="${mane}"/><stop offset="100%" stop-color="${mane}" stop-opacity=".7"/></radialGradient></defs>
+    <!-- Mane -->
+    <circle cx="50" cy="48" r="44" fill="url(#maneG)" opacity=".85"/>
+    ${[...Array(12)].map((_,i)=>{
+      const a = i*30*Math.PI/180;
+      return `<circle cx="${50+40*Math.cos(a)}" cy="${48+40*Math.sin(a)}" r="10" fill="${mane}" opacity=".6"/>`;
+    }).join('')}
+    <!-- Ears -->
+    <ellipse cx="18" cy="18" rx="11" ry="8" fill="${skin}" stroke="${mane}" stroke-width="2" transform="rotate(-15,18,18)"/>
+    <ellipse cx="16" cy="17" rx="6" ry="4" fill="#fecdd3"/>
+    <ellipse cx="82" cy="18" rx="11" ry="8" fill="${skin}" stroke="${mane}" stroke-width="2" transform="rotate(15,82,18)"/>
+    <ellipse cx="84" cy="17" rx="6" ry="4" fill="#fecdd3"/>
+    <!-- Face -->
+    <circle cx="50" cy="48" r="36" fill="${skin}"/>
+    <!-- Eyes -->
+    ${eyeR}
+    <!-- Nose -->
+    <ellipse cx="25" cy="46" rx="3" ry="2.5" fill="#1e1b1e"/>
+    <!-- Mouth -->
+    ${mouth}
+    <!-- Blush -->
+    ${blush?`<circle cx="10" cy="43" r="5" fill="#fca5a5" opacity=".4"/><circle cx="40" cy="43" r="5" fill="#fca5a5" opacity=".4"/>`:''}
+    <!-- Whiskers -->
+    <line x1="5" y1="42" x2="18" y2="44" stroke="#d4a574" stroke-width="1" opacity=".5"/>
+    <line x1="5" y1="48" x2="18" y2="48" stroke="#d4a574" stroke-width="1" opacity=".5"/>
+    <line x1="32" y1="44" x2="45" y2="42" stroke="#d4a574" stroke-width="1" opacity=".5"/>
+    <line x1="32" y1="48" x2="45" y2="48" stroke="#d4a574" stroke-width="1" opacity=".5"/>
+    ${bow?`<path d="M48 10 L42 2 L38 10 Z" fill="#ec4899"/><path d="M52 10 L58 2 L62 10 Z" fill="#ec4899"/><circle cx="50" cy="10" r="3" fill="#db2777"/>`:''}`;
+}
+
+function renderLion() {
+  const svg = document.getElementById('lion-svg');
+  if (svg) svg.innerHTML = drawLion(AI_STATE.lionVariant);
+  document.getElementById('lion-wrap').style.display = AI_STATE.enabled ? 'flex' : 'none';
+  updateAIToggle();
+  if (AI_STATE.enabled) updateLionLevelUI();
+}
+
+function regenerateLion() {
+  AI_STATE.lionVariant = Math.floor(Math.random()*20);
+  localStorage.setItem('wb-lion-variant', AI_STATE.lionVariant);
+  renderLion();
+  lionSpeak('嘿嘿，我换了新皮肤！还可爱吗？🦁✨');
+  closeLionMenu();
+}
+
+function setLionLevel(lvl) {
+  AI_STATE.talkLevel = lvl;
+  localStorage.setItem('wb-lion-level', lvl);
+  updateLionLevelUI();
+  closeLionMenu();
+  const labels = {high:'好哒！以后我会多说话的～🗣💬',mid:'OK～该说的时候我会说的！💬',low:'知道啦，我会安静一点的 🤫'};
+  lionSpeak(labels[lvl]);
+}
+
+function updateLionLevelUI() {
+  document.querySelectorAll('#lion-menu button[data-lvl]').forEach(b => {
+    b.classList.toggle('active', b.dataset.lvl===AI_STATE.talkLevel);
+  });
+}
+
+function toggleLionMenu() {
+  const menu = document.getElementById('lion-menu');
+  menu.classList.toggle('show');
+}
+function closeLionMenu() {
+  document.getElementById('lion-menu').classList.remove('show');
+}
+
+// Long press for lion menu
+let lionPressTimer;
+document.addEventListener('DOMContentLoaded', () => {
+  const lion = document.getElementById('lion-svg');
+  if (lion) {
+    lion.addEventListener('pointerdown', () => {
+      lionPressTimer = setTimeout(() => toggleLionMenu(), 600);
+    });
+    lion.addEventListener('pointerup', () => clearTimeout(lionPressTimer));
+    lion.addEventListener('pointerleave', () => clearTimeout(lionPressTimer));
+  }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#lion-wrap')) closeLionMenu();
+  });
+});
+
+// AI API call
+async function callAI(messages, maxTokens=120) {
+  if (!AI_STATE.enabled||!AI_STATE.apiKey) return null;
+  const endpoint = AI_ENDPOINTS[AI_STATE.provider]||AI_ENDPOINTS.custom;
+  if (!endpoint) return null;
+  try {
+    const res = await fetch(endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${AI_STATE.apiKey}`},
+      body:JSON.stringify({model:AI_STATE.model,messages,max_tokens:maxTokens,temperature:0.9}),
+      signal:AbortSignal.timeout(10000)
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content?.trim()||null;
+  } catch(e) { return null; }
+}
+
+// Lion speaks
+async function lionSpeak(text, force=false) {
+  if (!AI_STATE.enabled||!text) return;
+  if (!AI_STATE.apiKey) { showBubble(text); return; }
+  const now = Date.now();
+  const cooldown = AI_STATE.talkLevel==='high'?8000:AI_STATE.talkLevel==='mid'?20000:60000;
+  if (!force && now-AI_STATE.lastSpoke<cooldown) return;
+  AI_STATE.lastSpoke = now;
+
+  const msgs = [
+    {role:'system',content:LION_SYSTEM},
+    {role:'user',content:`根据以下场景，用小莱的口吻说1-2句话。场景：${text}`}
+  ];
+  const reply = await callAI(msgs, 100);
+  if (reply) showBubble(reply);
+  else showBubble(text); // fallback to plain text
+}
+
+function showBubble(text) {
+  const bubble = document.getElementById('lion-bubble');
+  if (!bubble) return;
+  bubble.textContent = text;
+  bubble.style.display = 'block';
+  clearTimeout(bubble._timeout);
+  bubble._timeout = setTimeout(() => { bubble.style.display='none'; }, 5000);
+}
+
+// AI toggle & settings
+function toggleAI() {
+  if (AI_STATE.enabled) {
+    AI_STATE.enabled = false;
+    localStorage.setItem('wb-ai-enabled','0');
+    renderLion();
+  } else {
+    if (!AI_STATE.apiKey) {
+      showAISettings();
+    } else {
+      AI_STATE.enabled = true;
+      localStorage.setItem('wb-ai-enabled','1');
+      renderLion();
+      lionSpeak('嗨嗨！小莱来啦～今天也要元气满满哦！🦁💖', true);
+    }
+  }
+}
+
+function updateAIToggle() {
+  const btn = document.getElementById('ai-toggle-btn');
+  if (!btn) return;
+  if (AI_STATE.enabled) { btn.className='ai-toggle ai-on'; btn.textContent='🤖 AI·开'; }
+  else { btn.className='ai-toggle ai-off'; btn.textContent='🤖 AI'; }
+}
+
+function showAISettings() {
+  modal('🤖 AI 助手设置', `
+    <div class="space-y-3">
+      <div><label class="text-xs font-medium mb-1 block" style="color:var(--sub)">API 服务商</label>
+        <select class="input" id="ai-provider" onchange="if(this.value==='custom')document.getElementById('ai-endpoint-wrap').style.display='block';else document.getElementById('ai-endpoint-wrap').style.display='none'">
+          <option value="openai" ${AI_STATE.provider==='openai'?'selected':''}>OpenAI</option>
+          <option value="deepseek" ${AI_STATE.provider==='deepseek'?'selected':''}>DeepSeek（国内推荐）</option>
+          <option value="groq" ${AI_STATE.provider==='groq'?'selected':''}>Groq（免费额度）</option>
+          <option value="custom" ${AI_STATE.provider==='custom'?'selected':''}>自定义</option>
+        </select>
+      </div>
+      <div id="ai-endpoint-wrap" style="display:${AI_STATE.provider==='custom'?'block':'none'}">
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">自定义 Endpoint</label>
+        <input class="input" id="ai-endpoint" value="${esc(AI_ENDPOINTS.custom)}" placeholder="https://api.example.com/v1/chat/completions">
+      </div>
+      <div><label class="text-xs font-medium mb-1 block" style="color:var(--sub)">API Key</label>
+        <input class="input" type="password" id="ai-key" value="${esc(AI_STATE.apiKey)}" placeholder="sk-..." autofocus>
+      </div>
+      <div><label class="text-xs font-medium mb-1 block" style="color:var(--sub)">Model</label>
+        <input class="input" id="ai-model" value="${esc(AI_STATE.model)}" placeholder="gpt-4o-mini / deepseek-chat / ...">
+      </div>
+      <div class="text-xs p-2 rounded-lg" style="background:var(--hover);color:var(--sub)">
+        💡 Key 仅存本地浏览器，不上传任何服务器。AI 调用直接从你的浏览器发送到对应 API。
+      </div>
+    </div>`, () => {
+    AI_STATE.provider = document.getElementById('ai-provider').value;
+    AI_STATE.apiKey = document.getElementById('ai-key').value.trim();
+    AI_STATE.model = document.getElementById('ai-model').value.trim()||'gpt-4o-mini';
+    localStorage.setItem('wb-ai-provider', AI_STATE.provider);
+    localStorage.setItem('wb-ai-key', AI_STATE.apiKey);
+    localStorage.setItem('wb-ai-model', AI_STATE.model);
+    if (AI_STATE.provider==='custom') {
+      AI_ENDPOINTS.custom = document.getElementById('ai-endpoint').value.trim();
+      localStorage.setItem('wb-ai-endpoint', AI_ENDPOINTS.custom);
+    }
+    if (AI_STATE.apiKey) {
+      AI_STATE.enabled = true;
+      localStorage.setItem('wb-ai-enabled','1');
+      renderLion();
+      lionSpeak('连接成功啦！小莱好开心能陪着你～有什么需要就戳戳我吧！🦁💕', true);
+    } else {
+      toast('请填入 API Key','error');
+    }
+  }, true);
+}
+
+// ===== Hook into app events =====
+// Called after key user actions
+function lionOnAction(event) {
+  if (!AI_STATE.enabled) return;
+  const lvl = AI_STATE.talkLevel;
+  // low: only important reminders
+  if (lvl==='low' && !event.important) return;
+  lionSpeak(event.prompt);
+}
+
+// Override key functions to trigger lion
+const _origAddTodo = addTodo;
+addTodo = function() { _origAddTodo(); lionOnAction({prompt:'用户刚刚添加了一个待办事项'}); };
+const _origAddCheckin = addCheckin;
+addCheckin = function(id) { _origAddCheckin(id); lionOnAction({prompt:'用户刚刚完成了一次打卡'}); };
+const _origAddTx = addTx;
+addTx = function() { _origAddTx(); lionOnAction({prompt:'用户刚刚记了一笔账'}); };
+const _origAddAnn = addAnn;
+addAnn = function() { _origAddAnn(); lionOnAction({prompt:'用户刚刚添加了一个纪念日'}); };
+const _origAddWish = addWish;
+addWish = function() { _origAddWish(); lionOnAction({prompt:'用户刚刚许了一个心愿，鼓励一下'}); };
+const _origAddDiary = addDiary;
+addDiary = function() { _origAddDiary(); lionOnAction({prompt:'用户刚刚写了一篇日记'}); };
+
+// Check warehouse expiry on enter
+const _origRenderWH = renderWH;
+renderWH = function() {
+  _origRenderWH();
+  if (AI_STATE.enabled && S.whCat===null) {
+    const today = fmt(new Date());
+    const expItems = S.warehouseItems.filter(i => {
+      if (!i.expiryDate) return false;
+      const days = Math.ceil((new Date(i.expiryDate+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+      return days <= 7;
+    });
+    if (expItems.length) {
+      lionOnAction({prompt:`仓库里有${expItems.length}件物品即将或已经过期：${expItems.map(i=>i.name).join('、')}。提醒用户注意`, important:true});
+    }
+  }
+};
+
+// ==================== UTILS ====================
+function updateClock() {
+  const n = new Date();
+  document.getElementById('today-clock').textContent =
+    n.toLocaleDateString('zh-CN',{weekday:'short',month:'short',day:'numeric'})+' '+
+    n.toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ==================== KEYBOARD ====================
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') closeModal();
+  if ((e.ctrlKey||e.metaKey) && ['1','2','3','4','5','6','7','8'].includes(e.key)) {
+    e.preventDefault();
+    go(NAV[parseInt(e.key)-1].id);
+  }
+});
+
+// ==================== BOOT ====================
+function boot() {
+  document.documentElement.classList.toggle('dark', S.theme==='dark');
+  updateThemeBtn();
+  buildNav();
+  go(S.panel, false);
+  updateClock();
+  renderLion();
+  checkSharedArchive();
+  setInterval(updateClock, 30000);
+  // Register service worker for PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+}
+boot();
+</script>
+</body>
+</html>

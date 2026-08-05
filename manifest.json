@@ -1,0 +1,18 @@
+{
+  "name": "WorkBuddy · 个人工作台",
+  "short_name": "WorkBuddy",
+  "description": "日历待办、任务打卡、纪念日、记账、日记、心愿单、档案馆、仓库 - 你的全能工作台",
+  "start_url": "./workbuddy.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fef1f5",
+  "theme_color": "#ec4899",
+  "icons": [
+    {
+      "src": "workbuddy-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
