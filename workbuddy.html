@@ -438,26 +438,26 @@ function updateThemeBtn() {
   document.getElementById('theme-btn-desktop').innerHTML = isDark ? '☀️ <span class="hidden lg:inline whitespace-nowrap">浅色模式</span>' : '🌙 <span class="hidden lg:inline whitespace-nowrap">暗黑模式</span>';
 }
 
-// Sidebar hover expand on mobile
+// Sidebar toggle on mobile
 let sidebarExpanded = false;
-function expandSidebar() {
+function toggleSidebar() {
   if (window.innerWidth >= 1024) return;
+  sidebarExpanded = !sidebarExpanded;
   const sb = document.getElementById('sidebar');
-  sb.style.width = '13rem';
-  document.getElementById('sidebar-brand').style.opacity = '1';
-  document.querySelectorAll('#nav-desktop .hidden').forEach(el => el.style.display = 'inline');
-  sidebarExpanded = true;
-}
-function collapseSidebar() {
-  if (window.innerWidth >= 1024) return;
-  setTimeout(() => {
-    if (!sidebarExpanded) return;
-    const sb = document.getElementById('sidebar');
+  if (sidebarExpanded) {
+    sb.style.width = '13rem';
+    document.getElementById('sidebar-brand').style.opacity = '1';
+    document.querySelectorAll('#nav-desktop .lg\\:inline').forEach(el => el.style.display = 'inline');
+  } else {
     sb.style.width = '3.5rem';
     document.getElementById('sidebar-brand').style.opacity = '0';
     document.querySelectorAll('#nav-desktop .lg\\:inline').forEach(el => el.style.display = '');
-    sidebarExpanded = false;
-  }, 300);
+  }
+}
+function expandSidebar() { if (window.innerWidth < 1024 && !sidebarExpanded) toggleSidebar(); }
+function collapseSidebar() {
+  if (window.innerWidth >= 1024) return;
+  setTimeout(function() { if (sidebarExpanded) toggleSidebar(); }, 500);
 }
 
 // ==================== TOAST & MODAL ====================
