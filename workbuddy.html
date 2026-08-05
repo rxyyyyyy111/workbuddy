@@ -2176,7 +2176,7 @@ function showAISettings() {
     </div>`, () => {
     AI_STATE.provider = document.getElementById('ai-provider').value;
     AI_STATE.apiKey = document.getElementById('ai-key').value.trim();
-    AI_STATE.model = document.getElementById('ai-model').value.trim()||'gpt-4o-mini';
+    AI_STATE.model = document.getElementById('ai-model').value.trim()||'';
     localStorage.setItem('wb-ai-provider', AI_STATE.provider);
     localStorage.setItem('wb-ai-key', AI_STATE.apiKey);
     localStorage.setItem('wb-ai-model', AI_STATE.model);
