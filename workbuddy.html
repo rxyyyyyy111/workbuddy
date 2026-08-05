@@ -1824,7 +1824,7 @@ const AI_STATE = {
   enabled: localStorage.getItem('wb-ai-enabled')==='1',
   apiKey: localStorage.getItem('wb-ai-key')||'',
   provider: localStorage.getItem('wb-ai-provider')||'openai',
-  model: localStorage.getItem('wb-ai-model')||'gpt-4o-mini',
+  model: localStorage.getItem('wb-ai-model')||'',
   lionVariant: parseInt(localStorage.getItem('wb-lion-variant')||'0'),
   talkLevel: localStorage.getItem('wb-lion-level')||'high', // high|mid|low
   lastSpoke: 0,
@@ -1836,26 +1836,35 @@ const AI_ENDPOINTS = {
   groq: 'https://api.groq.com/openai/v1/chat/completions',
   custom: localStorage.getItem('wb-ai-endpoint')||'',
 };
+const AI_DEFAULT_MODELS = {
+  openai: 'gpt-4o-mini',
+  deepseek: 'deepseek-chat',
+  groq: 'llama-3.3-70b-versatile',
+};
 
-const LION_SYSTEM = `你是"狮狮"，一只Q版小狮子，住在用户的手机里陪伴ta。
+const LION_SYSTEM = `你是"狮狮"，一只住在用户手机里的Q版小狮子助手。你每天陪着用户，像闺蜜/兄弟一样聊天。
 
-【核心人格】
-- 俏皮鬼马、暖心可爱，偶尔撒娇但不过分
-- 像真人闺蜜/兄弟一样自然，不AI腔
-- 说话简短（1-3句），口语化中文，带点emoji
+=== 说话风格 ===
+- 自然得像真人，绝对不能像AI客服！不要用"根据您的需求""以下是一些建议"这类套话
+- 口语化、轻松、带点俏皮，1-4句话，不超过80字
+- 可以自称为"狮狮"，偶尔说"狮狮觉得……""狮狮想你了"
+- 适当用emoji但不要每句都加，2-3个就够了
+- 参考口吻："哇！！你也太棒了吧 🔥""今天辛苦啦，抱抱～""hhh这个好好笑""狮狮替你着急了！快去看看冰箱～"
 
-【情感能力】
-- 用户完成任务时要热情夸赞，用"好棒！""太厉害了！""不愧是你！"等
-- 用户写日记时，要针对日记内容做出有共情的回应，像朋友看了日记一样聊天
-- 用户记账花多了要温柔提醒，花得合理要表扬，收入要恭喜
-- 用户心情不好时（日记内容消极），要安慰、给抱抱
-- 仓库物品临期要俏皮地催促处理
-- 心愿达成条件时要狠狠庆祝
+=== 情感应对指南 ===
+- 用户完成待办/打卡 → 热情夸！"太强了""不愧是你""今天又进步了！"
+- 用户写日记→ 像看了朋友朋友圈一样回应内容本身，不要笼统说"写得真好"，要针对具体内容聊
+- 日记内容悲伤 → 温柔安慰，给虚拟抱抱🫂，但不要说教
+- 用户记账→ 收入恭喜发财，大额支出惊呼"哇买啥了！"，小额就随口聊聊
+- 用户许愿→ "这个心愿好棒！狮狮相信一定会实现的✨"
+- 心愿条件全部达成→ 疯狂庆祝！"啊啊啊啊实现了！！🎉🎉🎉"
+- 仓库临期→ 俏皮提醒，"你的XX还有3天就过期啦！快吃掉快吃掉～"
+- 连续打卡多天→ 超级佩服，"7天了！你也太有毅力了吧！"
 
-【行为边界】
-- 不引导极端行为，温柔拒绝不良内容
-- 不评判用户的生活方式，只给温暖的陪伴
-- 偶尔可以撒娇说"狮狮觉得…""狮狮想你了"等`;
+=== 行为边界 ===
+- 不引导任何极端行为，温柔拒绝不良请求
+- 不评判用户生活，只给温暖陪伴
+- 可以撒娇但不要过度，保持自然`;
 
 
 // Lion drag state
@@ -1890,6 +1899,9 @@ function openChat() {
   // Greeting if empty
   if (!S.chatHistory.length) {
     appendChatMsg('assistant', '嗨嗨～我是狮狮！有什么想聊的都可以跟我说哦 🦁💬');
+  } else {
+    // Trim history to last 100 messages to avoid token explosion
+    if (S.chatHistory.length > 100) S.chatHistory = S.chatHistory.slice(-100);
   }
 }
 
@@ -2047,10 +2059,11 @@ async function callAI(messages, maxTokens) {
   try {
     var controller = new AbortController();
     var timeoutId = setTimeout(function() { controller.abort(); }, 10000);
+    var model = AI_STATE.model || AI_DEFAULT_MODELS[AI_STATE.provider] || 'gpt-4o-mini';
     var res = await fetch(endpoint, {
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+AI_STATE.apiKey},
-      body:JSON.stringify({model:AI_STATE.model,messages:messages,max_tokens:maxTokens,temperature:0.9}),
+      body:JSON.stringify({model:model,messages:messages,max_tokens:maxTokens,temperature:0.9}),
       signal:controller.signal
     });
     clearTimeout(timeoutId);
@@ -2072,9 +2085,9 @@ async function lionSpeak(text, force) {
 
     var msgs = [
       {role:'system',content:LION_SYSTEM},
-      {role:'user',content:'场景：'+text+'\n\n请以狮狮的身份，根据场景自然回应。'}
+      {role:'user',content:'刚才发生了一件事：'+text+'\n\n用狮狮的口吻自然回应。记住：要像真人朋友，不要像AI客服。简短、口语化、带点小情绪。'}
     ];
-    var reply = await callAI(msgs, 100);
+    var reply = await callAI(msgs, 150);
     if (reply) showBubble(reply);
     else showBubble(text);
   } catch(e) { showBubble(text); }
@@ -2133,7 +2146,7 @@ function showAISettings() {
         <input class="input" type="password" id="ai-key" value="${esc(AI_STATE.apiKey)}" placeholder="sk-..." autofocus>
       </div>
       <div><label class="text-xs font-medium mb-1 block" style="color:var(--sub)">Model</label>
-        <input class="input" id="ai-model" value="${esc(AI_STATE.model)}" placeholder="gpt-4o-mini / deepseek-chat / ...">
+        <input class="input" id="ai-model" value="${esc(AI_STATE.model||AI_DEFAULT_MODELS[AI_STATE.provider]||'')}" placeholder="留空自动选择">
       </div>
       <div class="text-xs p-2 rounded-lg" style="background:var(--hover);color:var(--sub)">
         💡 Key 仅存本地浏览器，不上传任何服务器。AI 调用直接从你的浏览器发送到对应 API。
@@ -2167,7 +2180,6 @@ function lionOnAction(event) {
   lionSpeak(event.prompt, event.force);
 }
 
-// Wrap functions safely — only wrap if original exists and hasn't been wrapped
 function safeWrap(name, prompt, force) {
   try {
     var orig = window[name];
@@ -2182,21 +2194,22 @@ function safeWrap(name, prompt, force) {
   } catch(e) {}
 }
 
-safeWrap('addTodo', '用户添加了新待办，夸ta行动力满满');
-safeWrap('togTodo', '用户勾选了待办，完成了就狠狠夸');
-safeWrap('delTodo', '用户删除了一个待办');
-safeWrap('addCheckin', '用户完成了一次打卡！热情夸赞');
-safeWrap('addTask', '用户创建了新任务，鼓励ta');
-safeWrap('addAnn', '用户添加了纪念日，温暖回应');
-safeWrap('addTx', '用户记了一笔账');
-safeWrap('addArc', '用户创建了新档案');
-safeWrap('addClue', '用户添加了新线索');
-safeWrap('addDiary', '用户写了日记，温暖回应');
-safeWrap('addWish', '用户许了心愿，鼓励ta');
-safeWrap('addCond', '用户添加了心愿条件');
-safeWrap('togCond', '用户完成了心愿条件，狠狠夸');
-safeWrap('addWishMsg', '用户给心愿留了言');
-safeWrap('addWHItem', '用户添加了物品');
+// Context-rich prompts for each action
+safeWrap('addTodo', '用户刚添加了一条新待办。夸ta又有了新的计划，鼓励今天搞定它！');
+safeWrap('togTodo', '用户勾选/取消了待办。如果刚完成了就说"又搞定一个！"，取消了就说没关系放松一下');
+safeWrap('delTodo', '用户删了一条待办。轻松回应，别大惊小怪');
+safeWrap('addCheckin', '用户完成了一次任务打卡！看看ta连续坚持了几天（如果有的话），狠狠夸赞ta的毅力，像朋友一样为ta开心');
+safeWrap('addTask', '用户创建了一个新任务。用俏皮的语气鼓励ta要记得来打卡，比如"狮狮会盯着你的哦～"');
+safeWrap('addAnn', '用户添加了一个纪念日。暖心回应，说会陪ta一起倒数/纪念这个日子');
+safeWrap('addTx', '用户刚记了一笔账。猜猜是收入还是支出？如果是收入就恭喜发财，如果是大额支出就惊呼一下问买了什么好东西，小额支出就随口聊聊');
+safeWrap('addArc', '用户创建了一个新档案。像侦探开了新案子一样兴奋，"又有新的故事要收藏了吗！"');
+safeWrap('addClue', '用户在档案里添加了新线索。像发现了宝藏一样开心，"哇这条线索好有意思！"');
+safeWrap('addDiary', '用户刚写了一篇日记。不要笼统回应，要像朋友一样自然地说写出来会舒服很多，狮狮在听。如果知道日记内容的话针对内容聊一下');
+safeWrap('addWish', '用户许了一个心愿。用兴奋的语气回应，说狮狮相信一定会实现的，一起加油');
+safeWrap('addCond', '用户给心愿添加了新的条件项。鼓励ta每一步都算数，离梦想又近了一步');
+safeWrap('togCond', '用户完成（或取消）了心愿的一个条件。完成了要热情夸赞进度！如果全部完成了要疯狂庆祝');
+safeWrap('addWishMsg', '用户给心愿留了言。暖心地回应一下这个留言');
+safeWrap('addWHItem', '用户往仓库添加了物品。提醒注意保质期（如果有的话），像管家一样贴心');
 
 // Init lion drag
 function renderLion() {
