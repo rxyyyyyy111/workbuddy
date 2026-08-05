@@ -1853,12 +1853,6 @@ const LION_SYSTEM = `你是"狮狮"，一只Q版小狮子，住在用户的手�
 - 不评判用户的生活方式，只给温暖的陪伴
 - 偶尔可以撒娇说"狮狮觉得…""狮狮想你了"等`;
 
-function renderLion() {
-  var wrap = document.getElementById('lion-wrap');
-  if (wrap) wrap.style.display = AI_STATE.enabled ? 'flex' : 'none';
-  updateAIToggle();
-  if (AI_STATE.enabled) updateLionLevelUI();
-}
 
 // Lion drag state
 let lionDrag = { active: false, startX: 0, startY: 0, origX: 0, origY: 0, moved: false };
@@ -2152,11 +2146,50 @@ function showAISettings() {
   }, true);
 }
 
-// ===== Lion hooks disabled for debugging =====
+// ===== Lion hooks =====
 function lionOnAction(event) {
   if (!AI_STATE.enabled) return;
   if (AI_STATE.talkLevel==='low' && !event.important) return;
   lionSpeak(event.prompt, event.force);
+}
+
+// Wrap functions safely — only wrap if original exists and hasn't been wrapped
+function safeWrap(name, prompt, force) {
+  try {
+    var orig = window[name];
+    if (typeof orig !== 'function') return;
+    if (orig._lionWrapped) return;
+    window[name] = function() {
+      var r = orig.apply(this, arguments);
+      lionOnAction({prompt:prompt, force:force});
+      return r;
+    };
+    window[name]._lionWrapped = true;
+  } catch(e) {}
+}
+
+safeWrap('addTodo', '用户添加了新待办，夸ta行动力满满');
+safeWrap('togTodo', '用户勾选了待办，完成了就狠狠夸');
+safeWrap('delTodo', '用户删除了一个待办');
+safeWrap('addCheckin', '用户完成了一次打卡！热情夸赞');
+safeWrap('addTask', '用户创建了新任务，鼓励ta');
+safeWrap('addAnn', '用户添加了纪念日，温暖回应');
+safeWrap('addTx', '用户记了一笔账');
+safeWrap('addArc', '用户创建了新档案');
+safeWrap('addClue', '用户添加了新线索');
+safeWrap('addDiary', '用户写了日记，温暖回应');
+safeWrap('addWish', '用户许了心愿，鼓励ta');
+safeWrap('addCond', '用户添加了心愿条件');
+safeWrap('togCond', '用户完成了心愿条件，狠狠夸');
+safeWrap('addWishMsg', '用户给心愿留了言');
+safeWrap('addWHItem', '用户添加了物品');
+
+// Init lion drag
+function renderLion() {
+  var wrap = document.getElementById('lion-wrap');
+  if (wrap) wrap.style.display = AI_STATE.enabled ? 'flex' : 'none';
+  updateAIToggle();
+  if (AI_STATE.enabled) { updateLionLevelUI(); initLionDrag(); }
 }
 
 // ==================== UTILS ====================
