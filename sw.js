@@ -1,4 +1,4 @@
-const CACHE = 'workbuddy-v3';
+const CACHE = 'workbuddy-v99';
 const ASSETS = [
   './workbuddy.html',
   './manifest.json',
@@ -33,17 +33,9 @@ self.addEventListener('fetch', e => {
   // Don't cache API calls
   if (url.pathname.includes('/v1/chat/completions')) return;
 
-  // HTML: network first, fallback to cache
+  // HTML: ALWAYS fetch from network, never cache (to avoid stale code)
   if (e.request.destination === 'document' || url.pathname.endsWith('.html')) {
-    e.respondWith(
-      fetch(e.request)
-        .then(res => {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
-          return res;
-        })
-        .catch(() => caches.match(e.request))
-    );
+    e.respondWith(fetch(e.request));
     return;
   }
 
