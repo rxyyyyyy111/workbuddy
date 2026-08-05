@@ -2166,105 +2166,77 @@ function showAISettings() {
 // ===== Hook into app events =====
 function lionOnAction(event) {
   if (!AI_STATE.enabled) return;
-  const lvl = AI_STATE.talkLevel;
-  if (lvl==='low' && !event.important) return;
+  if (AI_STATE.talkLevel==='low' && !event.important) return;
   lionSpeak(event.prompt, event.force);
 }
 
 function withLion(fn, prompt, force) {
-  return function() { const r = fn.apply(this, arguments); lionOnAction({prompt, force}); return r; };
+  return function() { var r = fn.apply(this, arguments); lionOnAction({prompt:prompt, force:force}); return r; };
 }
 
-// Calendar
-addTodo = withLion(addTodo, '用户刚添加了新待办！夸ta行动力满满，鼓励今天完成它 💪');
-togTodo = withLion(togTodo, '用户勾选/取消了待办。如果完成了就夸，取消了就说没关系');
-delTodo = withLion(delTodo, '用户删除了一个待办，表示理解');
+addTodo = withLion(addTodo, '用户刚添加了新待办！夸ta行动力满满，鼓励今天完成它');
+togTodo = withLion(togTodo, '用户勾选了待办，完成了就狠狠夸');
+delTodo = withLion(delTodo, '用户删除了一个待办');
 
-// Tasks
-addCheckin = withLion(addCheckin, '用户完成了一次打卡！！狠狠夸赞，用俏皮话，夸ta坚持得好');
-addTask = withLion(addTask, '用户创建了新任务，鼓励ta，提醒记得来打卡哦');
-delTask = withLion(delTask, '用户删除了一个任务，表示理解');
-delCheckin = withLion(delCheckin, '用户删除了打卡记录，温柔提醒要持之以恒');
+addCheckin = withLion(addCheckin, '用户完成了一次打卡！！热情夸赞坚持打卡');
+addTask = withLion(addTask, '用户创建了新任务，鼓励ta记得来打卡');
+delTask = withLion(delTask, '用户删除了一个任务');
+delCheckin = withLion(delCheckin, '用户删除了打卡记录');
 
-// Countdown
-addAnn = withLion(addAnn, '用户添加了一个纪念日。温暖回应这个特别的日子');
+addAnn = withLion(addAnn, '用户添加了一个纪念日，温暖回应');
 delAnn = withLion(delAnn, '用户删除了一个纪念日');
 
-// Finance
-addTx = withLion(addTx, '用户刚记了一笔账。如果是收入就恭喜发财，如果是支出就温柔提醒理性消费，大额支出要惊讶一下');
-delTx = withLion(delTx, '用户删除了一条记账记录');
+addTx = withLion(addTx, '用户刚记了一笔账，温柔回应一下金额');
+delTx = withLion(delTx, '用户删除了记账');
 
-// Archive
-addArc = withLion(addArc, '用户创建了新档案，像侦探开了新案子一样俏皮回应');
-addClue = withLion(addClue, '用户在档案里添加了新线索！像侦探发现了证据一样兴奋');
-delArc = withLion(delArc, '用户删除了一个档案');
-delClue = withLion(delClue, '用户删除了一条线索');
+addArc = withLion(addArc, '用户创建了新档案');
+addClue = withLion(addClue, '用户添加了新线索');
+delArc = withLion(delArc, '用户删除了档案');
+delClue = withLion(delClue, '用户删除了线索');
 
-// Diary — capture content before modal closes
-const _addDiaryOrig = addDiary;
-addDiary = function() {
-  // Before opening the modal, we can't read content yet.
-  // We'll hook the save by wrapping the modal function temporarily
-  const _modalOrig = modal;
-  let diaryCaptured = false;
-  modal = function(title, body, onSave, wide) {
-    const _onSaveOrig = onSave;
-    return _modalOrig(title, body, function() {
-      _onSaveOrig();
-      // After save, read the last diary entry
-      const last = S.diaries[S.diaries.length-1];
-      if (last && !diaryCaptured) {
-        diaryCaptured = true;
-        const moodLabel = {'😊':'开心','💪':'充实','🤔':'思考','😴':'疲惫','😢':'难过','😡':'生气'};
-        lionOnAction({prompt:`用户刚写了一篇日记：\n心情：${moodLabel[last.mood]||last.mood||'未知'}\n标题：${last.title||'无标题'}\n内容：${(last.content||'').slice(0,300)}\n\n请像朋友看了日记一样自然回应。针对日记内容聊天，不要复述。悲伤就安慰，开心就一起开心，困惑就温柔开导。这是最重要的互动，要真诚、有温度。`, force:true});
-      }
-      modal = _modalOrig; // restore
-    }, wide);
-  };
-  const r = _addDiaryOrig();
-  modal = _modalOrig; // restore if addDiary failed early
-  return r;
-};
-delDiary = withLion(delDiary, '用户删除了一篇日记，温柔地问一下是不是今天心情不太好');
-
-// Wishes
-addWish = withLion(addWish, '用户许了一个心愿！鼓励ta，说狮狮相信一定会实现的 ✨');
-delWish = withLion(delWish, '用户删除了一个心愿');
-addCond = withLion(addCond, '用户为心愿添加了条件项，鼓励一步步来，每步都算数');
-const _togCondOrig = togCond;
-togCond = function(wishId, condId) {
-  const r = _togCondOrig(wishId, condId);
-  const w = S.wishes.find(x=>x.id===wishId);
-  if (w) {
-    const done = (w.conditions||[]).filter(c=>c.done).length;
-    const total = (w.conditions||[]).length;
-    if (done===total) {
-      lionOnAction({prompt:`用户完成了心愿"${w.name}"的全部${total}个条件！！全部完成了！！疯狂庆祝🎉🎉🎉 说狮狮好骄傲`});
+// Diary: capture content via modal hook
+var _modalOrig = modal;
+modal = function(title, body, onSave, wide) {
+  var _onSave = onSave;
+  return _modalOrig(title, body, function() {
+    _onSave && _onSave();
+    // Check if this was a diary save
+    if (title.indexOf('日记')!==-1 || title.indexOf('写日记')!==-1) {
+      setTimeout(function() {
+        var last = S.diaries[S.diaries.length-1];
+        if (last && AI_STATE.enabled) {
+          lionOnAction({prompt:'用户写了一篇日记，心情'+last.mood+'，标题"'+last.title+'"，内容：'+(last.content||'').slice(0,200)+'。请像朋友一样自然回应日记内容。', force:true});
+        }
+      }, 100);
     }
-  }
-  return r;
+  }, wide);
 };
-addWishMsg = withLion(addWishMsg, '用户给心愿留了言，暖心地回应一下');
 
-// Warehouse
-addWHItem = withLion(addWHItem, '用户往仓库添加了物品。如果有过期日就提醒记得在过期前用掉');
-delWHItem = withLion(delWHItem, '用户从仓库删除了一个物品');
+addDiary = withLion(addDiary, '用户刚写了一篇日记，像朋友一样自然回应', true);
+delDiary = withLion(delDiary, '用户删除了一篇日记');
+
+addWish = withLion(addWish, '用户许了心愿，鼓励ta一定实现');
+delWish = withLion(delWish, '用户删除了心愿');
+addCond = withLion(addCond, '用户为心愿添加了条件');
+addWishMsg = withLion(addWishMsg, '用户给心愿留言了');
+togCond = withLion(togCond, '用户完成了心愿的一个条件，狠狠夸');
+
+addWHItem = withLion(addWHItem, '用户添加了物品，提醒注意保质期');
+delWHItem = withLion(delWHItem, '用户删除了物品');
 addWHSubCat = withLion(addWHSubCat, '用户添加了仓库分类');
 
-// Warehouse expiry check on enter
-const _origRenderWH = renderWH;
+// Warehouse expiry check
+var _origRenderWH = renderWH;
 renderWH = function() {
   _origRenderWH();
-  if (AI_STATE.enabled && S.whCat===null) {
-    const today = fmt(new Date());
-    const expItems = S.warehouseItems.filter(i => {
+  if (AI_STATE.enabled && !S.whCat) {
+    var today = fmt(new Date());
+    var expItems = S.warehouseItems.filter(function(i) {
       if (!i.expiryDate) return false;
-      const days = Math.ceil((new Date(i.expiryDate+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
-      return days <= 7;
+      return (new Date(i.expiryDate+'T00:00:00')-new Date(today+'T00:00:00'))/86400000 <= 7;
     });
     if (expItems.length) {
-      const names = expItems.map(i=>`${i.name}(${i.expiryDate})`).join('、');
-      lionOnAction({prompt:`仓库有${expItems.length}件临期/过期物品：${names}。用俏皮着急的语气提醒用户快处理，狮狮替你着急了！`, important:true, force:true});
+      lionOnAction({prompt:'仓库有'+expItems.length+'件临期物品，俏皮提醒用户处理', important:true, force:true});
     }
   }
 };
