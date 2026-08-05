@@ -272,7 +272,7 @@ tailwind.config = {
     <hr style="border-color:var(--border);margin:2px 0">
     <button onclick="regenerateLion()">🎨 重新生成</button>
   </div>
-  <svg id="lion-svg" class="lion-avatar lion-bobbing" viewBox="0 0 100 100" onclick="toggleLionMenu()"></svg>
+  <img id="lion-img" class="lion-avatar lion-bobbing" src="./shi.jpg" alt="小莱" onclick="toggleLionMenu()" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
 </div>
 
 <script>
@@ -1751,69 +1751,17 @@ const AI_ENDPOINTS = {
 
 const LION_SYSTEM = `你是一只Q版小狮子助手，名字叫"小莱"。你的性格：俏皮鬼马、暖心可爱，偶尔撒娇卖萌但不过分。说话自然简短（1-3句），像真人朋友。用口语化中文，适当加emoji。你会主动提醒临期物品、夸赞用户完成任务、给予温暖鼓励。对不好的内容温柔拒绝。不要引导极端行为。`;
 
-// Draw SVG lion
-function drawLion(variant) {
-  const v = Math.abs(variant) % 5;
-  const skins = ['#fbbf24','#f59e0b','#f97316','#fb923c','#fcd34d'];
-  const manes = ['#d97706','#b45309','#ea580c','#c2410c','#eab308'];
-  const skin = skins[v];
-  const mane = manes[v];
-  const blush = variant % 3 === 0;
-  const wink = variant % 4 === 1;
-  const mouthOpen = variant % 3 === 2;
-  const bow = variant % 7 < 3;
-
-  let eyeR = wink
-    ? '<ellipse cx="27" cy="35" rx="4" ry="5" fill="#1e1b1e"/><ellipse cx="27" cy="33" rx="1.5" ry="2" fill="#fff"/><path d="M10 40 Q16 46 22 40" stroke="#1e1b1e" stroke-width="2" fill="none" stroke-linecap="round"/>'
-    : '<ellipse cx="18" cy="35" rx="4.5" ry="5.5" fill="#1e1b1e"/><ellipse cx="17" cy="33" rx="1.8" ry="2.5" fill="#fff"/><ellipse cx="32" cy="35" rx="4.5" ry="5.5" fill="#1e1b1e"/><ellipse cx="31" cy="33" rx="1.8" ry="2.5" fill="#fff"/>';
-
-  let mouth = mouthOpen
-    ? '<ellipse cx="25" cy="56" rx="5" ry="4" fill="#1e1b1e"/><ellipse cx="25" cy="53" rx="3.5" ry="2" fill="#f87171"/>'
-    : '<path d="M18 54 Q25 62 32 54" stroke="#1e1b1e" stroke-width="2" fill="none" stroke-linecap="round"/>';
-
-  return `<defs><radialGradient id="maneG" cx="50%" cy="50%"><stop offset="0%" stop-color="${mane}"/><stop offset="100%" stop-color="${mane}" stop-opacity=".7"/></radialGradient></defs>
-    <!-- Mane -->
-    <circle cx="50" cy="48" r="44" fill="url(#maneG)" opacity=".85"/>
-    ${[...Array(12)].map((_,i)=>{
-      const a = i*30*Math.PI/180;
-      return `<circle cx="${50+40*Math.cos(a)}" cy="${48+40*Math.sin(a)}" r="10" fill="${mane}" opacity=".6"/>`;
-    }).join('')}
-    <!-- Ears -->
-    <ellipse cx="18" cy="18" rx="11" ry="8" fill="${skin}" stroke="${mane}" stroke-width="2" transform="rotate(-15,18,18)"/>
-    <ellipse cx="16" cy="17" rx="6" ry="4" fill="#fecdd3"/>
-    <ellipse cx="82" cy="18" rx="11" ry="8" fill="${skin}" stroke="${mane}" stroke-width="2" transform="rotate(15,82,18)"/>
-    <ellipse cx="84" cy="17" rx="6" ry="4" fill="#fecdd3"/>
-    <!-- Face -->
-    <circle cx="50" cy="48" r="36" fill="${skin}"/>
-    <!-- Eyes -->
-    ${eyeR}
-    <!-- Nose -->
-    <ellipse cx="25" cy="46" rx="3" ry="2.5" fill="#1e1b1e"/>
-    <!-- Mouth -->
-    ${mouth}
-    <!-- Blush -->
-    ${blush?`<circle cx="10" cy="43" r="5" fill="#fca5a5" opacity=".4"/><circle cx="40" cy="43" r="5" fill="#fca5a5" opacity=".4"/>`:''}
-    <!-- Whiskers -->
-    <line x1="5" y1="42" x2="18" y2="44" stroke="#d4a574" stroke-width="1" opacity=".5"/>
-    <line x1="5" y1="48" x2="18" y2="48" stroke="#d4a574" stroke-width="1" opacity=".5"/>
-    <line x1="32" y1="44" x2="45" y2="42" stroke="#d4a574" stroke-width="1" opacity=".5"/>
-    <line x1="32" y1="48" x2="45" y2="48" stroke="#d4a574" stroke-width="1" opacity=".5"/>
-    ${bow?`<path d="M48 10 L42 2 L38 10 Z" fill="#ec4899"/><path d="M52 10 L58 2 L62 10 Z" fill="#ec4899"/><circle cx="50" cy="10" r="3" fill="#db2777"/>`:''}`;
-}
-
 function renderLion() {
-  const svg = document.getElementById('lion-svg');
-  if (svg) svg.innerHTML = drawLion(AI_STATE.lionVariant);
   document.getElementById('lion-wrap').style.display = AI_STATE.enabled ? 'flex' : 'none';
   updateAIToggle();
   if (AI_STATE.enabled) updateLionLevelUI();
 }
 
 function regenerateLion() {
-  AI_STATE.lionVariant = Math.floor(Math.random()*20);
-  localStorage.setItem('wb-lion-variant', AI_STATE.lionVariant);
-  renderLion();
-  lionSpeak('嘿嘿，我换了新皮肤！还可爱吗？🦁✨');
+  // Refresh the lion image (bust browser cache)
+  const img = document.getElementById('lion-img');
+  if (img) { img.src = './shi.jpg?' + Date.now(); }
+  lionSpeak('嘿嘿，我换好新皮肤啦！可爱吗？🦁✨');
   closeLionMenu();
 }
 
@@ -1843,7 +1791,7 @@ function closeLionMenu() {
 // Long press for lion menu
 let lionPressTimer;
 document.addEventListener('DOMContentLoaded', () => {
-  const lion = document.getElementById('lion-svg');
+  const lion = document.getElementById('lion-img');
   if (lion) {
     lion.addEventListener('pointerdown', () => {
       lionPressTimer = setTimeout(() => toggleLionMenu(), 600);
