@@ -1824,7 +1824,14 @@ const AI_STATE = {
   enabled: localStorage.getItem('wb-ai-enabled')==='1',
   apiKey: localStorage.getItem('wb-ai-key')||'',
   provider: localStorage.getItem('wb-ai-provider')||'openai',
-  model: localStorage.getItem('wb-ai-model')||'',
+  model: (function(){
+    var m = localStorage.getItem('wb-ai-model')||'';
+    var p = localStorage.getItem('wb-ai-provider')||'openai';
+    // Auto-correct if model is from a different provider's default
+    if (m==='gpt-4o-mini' && p==='deepseek') return '';
+    if (m==='deepseek-chat' && p==='deepseek') return ''; // old name, update
+    return m;
+  })(),
   lionVariant: parseInt(localStorage.getItem('wb-lion-variant')||'0'),
   talkLevel: localStorage.getItem('wb-lion-level')||'high', // high|mid|low
   lastSpoke: 0,
@@ -1838,7 +1845,7 @@ const AI_ENDPOINTS = {
 };
 const AI_DEFAULT_MODELS = {
   openai: 'gpt-4o-mini',
-  deepseek: 'deepseek-chat',
+  deepseek: 'deepseek-v4-pro',
   groq: 'llama-3.3-70b-versatile',
 };
 
