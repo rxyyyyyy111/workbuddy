@@ -424,18 +424,6 @@ function go(id, animate=true) {
   document.getElementById('page-sub').textContent = SUBS[id];
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.nav===id));
   render(id);
-  // Lion responds to module switch occasionally
-  const prompts = {
-    calendar:'用户打开了日历。看看今天有什么待办，鼓励ta规划好时间',
-    tasks:'用户打开了任务栏。如果有未完成的任务就温柔提醒，如果都完成了就夸',
-    countdown:'用户在看纪念日。如果最近有纪念日就提醒准备，没有就说珍惜每一天',
-    finance:'用户打开了记账本。看看这个月收支，鼓励理性消费',
-    archive:'用户打开了档案馆。说整理记忆是件美好的事',
-    diary:'用户打开了日记本。鼓励ta写下今天的感受',
-    wishes:'用户在看心愿单。鼓励ta一步步实现梦想',
-    warehouse:'用户打开了仓库。提醒查看临期物品',
-  };
-  if (prompts[id]) lionOnAction({prompt:prompts[id]});
 }
 
 // ==================== THEME ====================
@@ -1866,9 +1854,10 @@ const LION_SYSTEM = `你是"狮狮"，一只Q版小狮子，住在用户的手�
 - 偶尔可以撒娇说"狮狮觉得…""狮狮想你了"等`;
 
 function renderLion() {
-  document.getElementById('lion-wrap').style.display = AI_STATE.enabled ? 'flex' : 'none';
+  var wrap = document.getElementById('lion-wrap');
+  if (wrap) wrap.style.display = AI_STATE.enabled ? 'flex' : 'none';
   updateAIToggle();
-  if (AI_STATE.enabled) { updateLionLevelUI(); initLionDrag(); }
+  if (AI_STATE.enabled) updateLionLevelUI();
 }
 
 // Lion drag state
@@ -2163,83 +2152,12 @@ function showAISettings() {
   }, true);
 }
 
-// ===== Hook into app events =====
+// ===== Lion hooks disabled for debugging =====
 function lionOnAction(event) {
   if (!AI_STATE.enabled) return;
   if (AI_STATE.talkLevel==='low' && !event.important) return;
   lionSpeak(event.prompt, event.force);
 }
-
-function withLion(fn, prompt, force) {
-  return function() { var r = fn.apply(this, arguments); lionOnAction({prompt:prompt, force:force}); return r; };
-}
-
-addTodo = withLion(addTodo, '用户刚添加了新待办！夸ta行动力满满，鼓励今天完成它');
-togTodo = withLion(togTodo, '用户勾选了待办，完成了就狠狠夸');
-delTodo = withLion(delTodo, '用户删除了一个待办');
-
-addCheckin = withLion(addCheckin, '用户完成了一次打卡！！热情夸赞坚持打卡');
-addTask = withLion(addTask, '用户创建了新任务，鼓励ta记得来打卡');
-delTask = withLion(delTask, '用户删除了一个任务');
-delCheckin = withLion(delCheckin, '用户删除了打卡记录');
-
-addAnn = withLion(addAnn, '用户添加了一个纪念日，温暖回应');
-delAnn = withLion(delAnn, '用户删除了一个纪念日');
-
-addTx = withLion(addTx, '用户刚记了一笔账，温柔回应一下金额');
-delTx = withLion(delTx, '用户删除了记账');
-
-addArc = withLion(addArc, '用户创建了新档案');
-addClue = withLion(addClue, '用户添加了新线索');
-delArc = withLion(delArc, '用户删除了档案');
-delClue = withLion(delClue, '用户删除了线索');
-
-// Diary: capture content via modal hook
-var _modalOrig = modal;
-modal = function(title, body, onSave, wide) {
-  var _onSave = onSave;
-  return _modalOrig(title, body, function() {
-    _onSave && _onSave();
-    // Check if this was a diary save
-    if (title.indexOf('日记')!==-1 || title.indexOf('写日记')!==-1) {
-      setTimeout(function() {
-        var last = S.diaries[S.diaries.length-1];
-        if (last && AI_STATE.enabled) {
-          lionOnAction({prompt:'用户写了一篇日记，心情'+last.mood+'，标题"'+last.title+'"，内容：'+(last.content||'').slice(0,200)+'。请像朋友一样自然回应日记内容。', force:true});
-        }
-      }, 100);
-    }
-  }, wide);
-};
-
-addDiary = withLion(addDiary, '用户刚写了一篇日记，像朋友一样自然回应', true);
-delDiary = withLion(delDiary, '用户删除了一篇日记');
-
-addWish = withLion(addWish, '用户许了心愿，鼓励ta一定实现');
-delWish = withLion(delWish, '用户删除了心愿');
-addCond = withLion(addCond, '用户为心愿添加了条件');
-addWishMsg = withLion(addWishMsg, '用户给心愿留言了');
-togCond = withLion(togCond, '用户完成了心愿的一个条件，狠狠夸');
-
-addWHItem = withLion(addWHItem, '用户添加了物品，提醒注意保质期');
-delWHItem = withLion(delWHItem, '用户删除了物品');
-addWHSubCat = withLion(addWHSubCat, '用户添加了仓库分类');
-
-// Warehouse expiry check
-var _origRenderWH = renderWH;
-renderWH = function() {
-  _origRenderWH();
-  if (AI_STATE.enabled && !S.whCat) {
-    var today = fmt(new Date());
-    var expItems = S.warehouseItems.filter(function(i) {
-      if (!i.expiryDate) return false;
-      return (new Date(i.expiryDate+'T00:00:00')-new Date(today+'T00:00:00'))/86400000 <= 7;
-    });
-    if (expItems.length) {
-      lionOnAction({prompt:'仓库有'+expItems.length+'件临期物品，俏皮提醒用户处理', important:true, force:true});
-    }
-  }
-};
 
 // ==================== UTILS ====================
 function updateClock() {
