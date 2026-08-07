@@ -112,11 +112,9 @@ tailwind.config = {
   }
   .toggle-opt.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   input[type="checkbox"] { accent-color: var(--accent); width: 1rem; height: 1rem; cursor: pointer; }
-  input[type="file"] {
-    font-size: 16px !important; /* iOS requires >=16px to be tappable */
-    padding: .5rem .25rem; min-height: 44px; /* minimum touch target */
-    cursor: pointer;
-  }
+  .file-btn { display: inline-flex; align-items: center; gap: .3rem; padding: .55rem .9rem; border-radius: .6rem; font-size: .85rem; cursor: pointer; min-height: 44px; background: var(--hover); color: var(--text); border: 1.5px dashed var(--border); transition: all var(--transition); }
+  .file-btn:hover { border-color: var(--accent); background: var(--accent-light); }
+  .file-btn.has-file { border-style: solid; border-color: var(--accent); background: var(--accent-light); color: var(--accent); }
 
   /* File upload pill */
   .file-pill {
@@ -493,6 +491,15 @@ function readFiles(fileList) {
       r.readAsDataURL(file);
     });
   })).then(function(arr) { return arr.filter(Boolean); });
+}
+
+// Generate a tappable file-upload label+input combo — works on iOS
+function fileInputHTML(id, accept, multiple, label) {
+  var acc = accept || 'image/*';
+  var mult = multiple ? ' multiple' : '';
+  var lbl = label || '📷 选择文件';
+  return '<label for="'+id+'" class="file-btn">'+lbl+'</label>'+
+    '<input type="file" id="'+id+'" accept="'+acc+'"'+mult+' style="position:absolute;opacity:0;width:0;height:0;overflow:hidden">';
 }
 
 // Helper: get images array from a record (backward compat: image string → images array)
@@ -976,11 +983,11 @@ function addTask() {
       </div>
       <div>
         <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选，支持多选）</label>
-        <input type="file" accept="image/*" id="tk-image" class="text-xs" style="width:100%" multiple>
+        ${fileInputHTML('tk-image', 'image/*', true, '📷 选择图片（可多选）')}
       </div>
       <div>
         <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">视频（可选）</label>
-        <input type="file" accept="video/*" id="tk-video" class="text-xs" style="width:100%">
+        ${fileInputHTML('tk-video', 'video/*', false, '🎬 选择视频')}
       </div>
     </div>`, () => {
     const name = document.getElementById('tk-name').value.trim();
@@ -1067,7 +1074,7 @@ function addCheckin(taskId) {
       <textarea class="input" id="ck-text" placeholder="记录心得、想法..." rows="3" autofocus></textarea>
       <div>
         <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选，支持多选）</label>
-        <input type="file" accept="image/*" id="ck-image" class="text-xs" style="width:100%" multiple>
+        ${fileInputHTML('ck-image', 'image/*', true, '📷 选择图片（可多选）')}
       </div>
     </div>`, () => {
     const text = document.getElementById('ck-text').value.trim();
@@ -1418,7 +1425,7 @@ function addClue() {
       <textarea class="input" id="clue-text" placeholder="记录文字..." rows="3" autofocus></textarea>
       <div>
         <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选，支持多选）</label>
-        <input type="file" accept="image/*" id="clue-image" class="text-xs" style="width:100%" multiple>
+        ${fileInputHTML('clue-image', 'image/*', true, '📷 选择图片（可多选）')}
       </div>
     </div>`, () => {
     const text = document.getElementById('clue-text').value.trim();
@@ -1652,7 +1659,7 @@ function addDiary() {
       <textarea class="input" id="dy-content" placeholder="今天发生了什么..." rows="5"></textarea>
       <div>
         <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选，支持多选）</label>
-        <input type="file" accept="image/*" id="dy-image" class="text-xs" style="width:100%" multiple>
+        ${fileInputHTML('dy-image', 'image/*', true, '📷 选择图片（可多选）')}
       </div>
     </div>`, () => {
     var date = document.getElementById('dy-date').value;
@@ -2033,7 +2040,7 @@ function addWHItem(cat) {
       <select class="input" id="whi-subcat">${subCats.length?subCats.map(s=>`<option value="${s}">${s}</option>`).join(''):'<option value="">无分类</option>'}</select>
       <div>
         <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选，支持多选）</label>
-        <input type="file" accept="image/*" id="whi-image" class="text-xs" style="width:100%" multiple>
+        ${fileInputHTML('whi-image', 'image/*', true, '📷 选择图片（可多选）')}
       </div>
       <input class="input" id="whi-note" placeholder="备注（可选）">
       <div class="flex gap-2">
@@ -2155,8 +2162,7 @@ function addWHCat() {
       '<input class="input" id="whcat-name" placeholder="分类名称 *" autofocus>'+
       '<div>'+
         '<label class="text-xs font-medium mb-1 block" style="color:var(--sub)">分类图标（可选，上传图片）</label>'+
-        '<input type="file" accept="image/*" id="whcat-icon" class="text-xs" style="width:100%">'+
-        '<div id="whcat-icon-preview" class="mt-2" style="display:none"></div>'+
+        fileInputHTML('whcat-icon','image/*',false,'📷 上传图标')+
       '</div>'+
     '</div>',
     function(){
@@ -2190,8 +2196,8 @@ function editWHCat(catId) {
       '<input class="input" id="whcat-name" placeholder="分类名称 *" value="'+esc(cat.name)+'" autofocus>'+
       '<div>'+
         '<label class="text-xs font-medium mb-1 block" style="color:var(--sub)">分类图标（可选）</label>'+
-        '<input type="file" accept="image/*" id="whcat-icon" class="text-xs" style="width:100%">'+
-        (previewHTML ? '<div id="whcat-icon-preview" class="mt-2">'+previewHTML+'</div>' : '<div id="whcat-icon-preview" class="mt-2" style="display:none"></div>')+
+        fileInputHTML('whcat-icon','image/*',false,'📷 更换图标')+
+        (previewHTML ? '<div class="mt-2">'+previewHTML+'</div>' : '')+
       '</div>'+
     '</div>',
     function(){
