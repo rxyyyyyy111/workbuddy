@@ -173,14 +173,16 @@ tailwind.config = {
 
   /* ====== AI Lion ====== */
   .lion-wrap {
-    position: fixed; bottom: 20px; right: 20px; z-index: 150;
-    display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+    position: fixed; bottom: 16px; right: 16px; left: calc(3.5rem + 16px); z-index: 150;
+    display: flex; align-items: center; justify-content: flex-end; gap: 0; height: 72px;
   }
   .lion-bubble {
-    max-width: 220px; padding: .6rem .85rem; border-radius: 1rem 1rem .25rem 1rem;
-    font-size: .78rem; line-height: 1.45; animation: popIn .35s ease-out;
+    flex: 1; height: 72px; display: flex; align-items: center; padding: 0 1rem;
+    border-radius: 2rem 0 0 2rem; font-size: .82rem; line-height: 1.4;
+    animation: popIn .35s ease-out; cursor: pointer;
     box-shadow: 0 4px 16px rgba(0,0,0,.1); word-break: break-word;
     background: var(--card); color: var(--text); border: 1.5px solid var(--border);
+    border-right: none; margin-right: -1px;
   }
   @keyframes popIn { from{opacity:0;transform:translateY(8px) scale(.9)} to{opacity:1;transform:translateY(0) scale(1)} }
   .lion-avatar {
@@ -342,16 +344,12 @@ tailwind.config = {
 
 <!-- ==================== AI LION ==================== -->
 <div class="lion-wrap" id="lion-wrap" style="display:none">
-  <div class="lion-bubble" id="lion-bubble" style="display:none"></div>
+  <div class="lion-bubble" id="lion-bubble" style="display:none" onclick="openChat()"></div>
   <div class="lion-menu" id="lion-menu">
-    <button data-lvl="high" onclick="setLionLevel('high')">🗣 话多模式</button>
-    <button data-lvl="mid" onclick="setLionLevel('mid')">💬 话中模式</button>
-    <button data-lvl="low" onclick="setLionLevel('low')">🤫 话少模式</button>
-    <hr style="border-color:var(--border);margin:2px 0">
-    <button onclick="openChat()">💬 发起对话</button>
+    <button onclick="closeLionMenu();openChat();startLionTopic()">💬 发起对话</button>
     <button onclick="closeLionMenu();showAISettings()">⚙️ 修改API</button>
   </div>
-  <img id="lion-img" class="lion-avatar lion-bobbing" src="狮狮.jpg" alt="狮狮" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
+  <img id="lion-img" class="lion-avatar lion-bobbing" src="狮狮.png" alt="狮狮" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
 </div>
 
 <script>
@@ -1596,6 +1594,7 @@ function addDiary() {
     var saveIt = function(imgs) {
       S.diaries.push({id:uid(), date:date, title:title, content:content, images:imgs, mood:mood});
       save('diaries'); renderDiary(); toast('日记已保存 📔');
+      trackAction('写了一篇日记：「'+(title||'')+'」');
 
       // Lion analyzes diary content
       if (AI_STATE.enabled) {
@@ -2414,6 +2413,9 @@ function getLionSystem() {
 }
 
 
+// Track latest user action for spirit topic
+window._lastAction = '';
+
 // Lion drag state
 let lionDrag = { active: false, startX: 0, startY: 0, origX: 0, origY: 0, moved: false };
 var lionSavedPos = {};
@@ -2671,11 +2673,9 @@ function initLionDrag() {
   if (!wrap) return;
   _lionDragInited = true;
 
-  if (lionSavedPos.x) {
-    wrap.style.right = 'auto';
-    wrap.style.bottom = 'auto';
-    wrap.style.left = lionSavedPos.x + 'px';
-    wrap.style.top = lionSavedPos.y + 'px';
+  if (lionSavedPos.bottom) {
+    wrap.style.bottom = lionSavedPos.bottom + 'px';
+    wrap.style.right = lionSavedPos.right + 'px';
   }
 
   var longPressTimer = null;
@@ -2691,6 +2691,7 @@ function initLionDrag() {
 
   function onDown(e) {
     if (e.target.closest('#lion-menu') || e.target.closest('.lion-bubble') || e.target.closest('button')) return;
+    if (!e.target.closest('#lion-img')) return; // Only drag the avatar
     cancelLongPress();
     isDragging = false;
     startX = e.clientX;
@@ -2727,20 +2728,17 @@ function initLionDrag() {
     if (!isDragging) return;
     var dx = e.clientX - startX;
     var dy = e.clientY - startY;
-    wrap.style.right = 'auto';
-    wrap.style.bottom = 'auto';
-    var nx = Math.max(0, Math.min(window.innerWidth - 80, origX + dx));
-    var ny = Math.max(0, Math.min(window.innerHeight - 80, origY + dy));
-    wrap.style.left = nx + 'px';
-    wrap.style.top = ny + 'px';
+    var newRight = Math.max(0, window.innerWidth - (origX + wrap.offsetWidth) - dx);
+    var newBottom = Math.max(0, window.innerHeight - origY - wrap.offsetHeight - dy);
+    wrap.style.right = newRight + 'px';
+    wrap.style.bottom = newBottom + 'px';
   }
 
   function onUp(e) {
     cancelLongPress();
     if (isDragging) {
       wrap.classList.remove('dragging');
-      var rect = wrap.getBoundingClientRect();
-      localStorage.setItem('wb-lion-pos', JSON.stringify({ x: rect.left, y: rect.top }));
+      localStorage.setItem('wb-lion-pos', JSON.stringify({ bottom: parseInt(wrap.style.bottom)||16, right: parseInt(wrap.style.right)||16 }));
       isDragging = false;
     } else if (!longPressTimer) {
       // Already handled
@@ -2754,21 +2752,6 @@ function initLionDrag() {
   document.addEventListener('pointermove', onMove);
   document.addEventListener('pointerup', onUp);
   document.addEventListener('pointercancel', onUp);
-}
-
-function setLionLevel(lvl) {
-  AI_STATE.talkLevel = lvl;
-  localStorage.setItem('wb-lion-level', lvl);
-  updateLionLevelUI();
-  closeLionMenu();
-  const labels = {high:'好哒！以后我会多说话的～🗣💬',mid:'OK～该说的时候我会说的！💬',low:'知道啦，我会安静一点的 🤫'};
-  lionSpeak(labels[lvl]);
-}
-
-function updateLionLevelUI() {
-  document.querySelectorAll('#lion-menu button[data-lvl]').forEach(b => {
-    b.classList.toggle('active', b.dataset.lvl===AI_STATE.talkLevel);
-  });
 }
 
 function toggleLionMenu() {
@@ -2869,14 +2852,31 @@ function _showSingleBubble(text) {
   var bubble = document.getElementById('lion-bubble');
   if (!bubble) return;
   bubble.textContent = text;
-  bubble.style.display = 'block';
+  bubble.style.display = 'flex';
   clearTimeout(bubble._timeout);
   bubble._timeout = setTimeout(function() {
     bubble.style.display = 'none';
     _bubbleQueue = [];
     if (_bubbleTimer) clearInterval(_bubbleTimer);
-  }, 4000);
+  }, 5000);
 }
+
+function startLionTopic() {
+  var sp = (S.spirits&&S.spirits.length) ? S.spirits[0] : {name:'狮狮',tone:''};
+  if (!window._lastAction) {
+    appendChatMsg('assistant', '（'+sp.name+'看了看你）今天想聊什么？');
+    return;
+  }
+  var prompt = '用户最近的操作：'+window._lastAction+'。请用自然口吻以此开启话题，简短一句话，像朋友聊天。不要AI腔。';
+  var msgs = [{role:'system',content:getLionSystem()},{role:'user',content:prompt}];
+  callAI(msgs, 80).then(function(reply){
+    if (reply) appendChatMsg('assistant', reply);
+    else appendChatMsg('assistant', '（'+sp.name+'歪头看你）嗯？');
+  });
+}
+
+// Track important actions
+function trackAction(desc) { window._lastAction = desc; }
 
 // Sadness keywords detection
 function isDeeplySad(text) {
@@ -3009,7 +3009,6 @@ function renderLion() {
     if (img && sp) { img.src = './'+sp.img; img.alt = sp.name; img.title = sp.name; }
     updateAIToggle();
     if (AI_STATE.enabled) {
-      updateLionLevelUI();
       initLionDrag();
     }
   } catch(e) { console.log('renderLion error:', e); }
