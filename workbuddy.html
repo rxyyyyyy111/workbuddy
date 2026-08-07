@@ -391,6 +391,9 @@ const S = {
 
   // Password Vault
   passwords: safeParse(localStorage.getItem("wb-passwords"), '[]'),
+
+  // Expiry warnings dismissed by user
+  expiryDismissed: safeParse(localStorage.getItem("wb-expiryDismissed"), '[]'),
 };
 
 const CAT_INCOME = ['工资','奖金','投资','兼职','红包','其他'];
@@ -603,6 +606,7 @@ function renderCal() {
         <button class="btn btn-primary btn-xs" onclick="addAnn()" title="添加纪念日" style="padding:.2rem .5rem;font-size:.7rem">+ 纪念日</button>
       </div>
       ${annSection}
+      ${buildExpiryWarning()}
       <div class="grid grid-cols-7 gap-0.5 text-center text-xs font-medium mb-0.5" style="color:var(--sub);font-size:.65rem">
         <div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div>
       </div>
@@ -626,6 +630,64 @@ function nextAnnDate(ds) {
   var thisYear = new Date(today.getFullYear(), parts[1]-1, parts[2]);
   if (thisYear >= today) return thisYear;
   return new Date(today.getFullYear()+1, parts[1]-1, parts[2]);
+}
+
+// Build expiry warning banner for warehouse items
+function buildExpiryWarning() {
+  var today = fmt(new Date());
+  var dismissed = S.expiryDismissed || [];
+
+  // Clean up dismissed IDs that no longer exist
+  var existingIds = S.warehouseItems.map(function(i){return i.id;});
+  S.expiryDismissed = dismissed.filter(function(did){return existingIds.indexOf(did)!==-1;});
+
+  var warnings = [];
+  S.warehouseItems.forEach(function(item){
+    if (!item.expiryDate) return;
+    if (S.expiryDismissed.indexOf(item.id)!==-1) return;
+    var days = Math.ceil((new Date(item.expiryDate+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+    if (days <= 14) {
+      warnings.push({item:item, days:days});
+    }
+  });
+  if (!warnings.length) return '';
+
+  warnings.sort(function(a,b){return a.days-b.days;});
+
+  var isExpired = warnings[0].days <= 0;
+  var html = '<div class="mb-2 p-2 rounded-xl slide-up" style="border-left:3px solid '+(isExpired?'var(--red)':'#f59e0b')+'" class="'+(isExpired?'expiry-danger':'expiry-warn')+'">';
+  html += '<div class="flex items-center justify-between gap-2">';
+  html += '<span class="text-xs font-bold">⚠️ 仓库临期提醒</span>';
+  html += '<button class="btn btn-xs" style="font-size:.6rem;padding:.1rem .4rem;background:transparent;color:var(--sub);border:1px solid var(--border);cursor:pointer" onclick="dismissAllExpiry()">全部忽略</button>';
+  html += '</div>';
+  html += '<div class="flex gap-1.5 flex-wrap mt-1.5">';
+  warnings.forEach(function(w){
+    var icon = WH_ICONS[w.item.mainCat]||'📦';
+    var cls = w.days<=0?'expiry-danger':'expiry-warn';
+    var txt = w.days<=0?'已过期':w.days+'天后';
+    html += '<span class="'+cls+'" style="display:inline-flex;align-items:center;gap:3px;font-size:.68rem;padding:2px 8px;border-radius:2rem;cursor:default">'+icon+' '+esc(w.item.name)+' <b>'+txt+'</b> <span onclick="event.stopPropagation();dismissExpiry(\''+w.item.id+'\')" style="cursor:pointer;opacity:.5;margin-left:2px" title="忽略">✕</span></span>';
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function dismissExpiry(id) {
+  if (S.expiryDismissed.indexOf(id)===-1) S.expiryDismissed.push(id);
+  save('expiryDismissed');
+  renderCal();
+}
+
+function dismissAllExpiry() {
+  var today = fmt(new Date());
+  S.warehouseItems.forEach(function(item){
+    if (!item.expiryDate) return;
+    var days = Math.ceil((new Date(item.expiryDate+'T00:00:00')-new Date(today+'T00:00:00'))/86400000);
+    if (days <= 14 && S.expiryDismissed.indexOf(item.id)===-1) {
+      S.expiryDismissed.push(item.id);
+    }
+  });
+  save('expiryDismissed');
+  renderCal();
 }
 
 function pickDate(ds) {
