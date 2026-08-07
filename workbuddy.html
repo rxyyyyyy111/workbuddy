@@ -826,7 +826,7 @@ function renderTaskDetail() {
       </div>
       ${c.text?`<p class="text-sm whitespace-pre-wrap">${esc(c.text)}</p>`:''}
       ${renderImageHTML(getImages(c), 180)}
-      ${renderSpiritComments('checkin_'+c.id, '打卡 · '+c.date, c.text||'')}
+      ${spiritBubble('checkin_'+c.id)}
     </div>`).join('');
   if (!checksHTML) checksHTML = '<p class="text-center py-8 text-sm" style="color:var(--sub)">还没有打卡记录，开始第一次打卡吧 💪</p>';
 
@@ -1501,6 +1501,7 @@ function renderDiary() {
               <span>${d.date}</span>
               ${d.content?`<span class="truncate max-w-[200px]">— ${esc(d.content.slice(0,60))}${d.content.length>60?'...':''}</span>`:''}
               ${hasImg?`<span class="file-pill file-pill-img">🖼${imgCount>1?' '+imgCount:''}</span>`:''}
+              ${spiritBubble('diary_'+d.id)}
             </div>
           </div>
           <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delDiary('${d.id}')">✕</button>
@@ -1563,7 +1564,6 @@ function viewDiary(id) {
       </div>
       ${d.content?`<p class="text-sm whitespace-pre-wrap leading-relaxed">${esc(d.content)}</p>`:'<p class="text-sm" style="color:var(--sub)">（无内容）</p>'}
       ${renderImageHTML(getImages(d), 220)}
-      ${renderSpiritComments('diary_'+id, d.title||'无标题', d.content||'')}
     </div>
   `, ()=>{}, true);
   document.getElementById('modal-save').textContent = '关闭';
@@ -2221,7 +2221,52 @@ function switchSpirit(poolIndex) {
   toast('已切换至 '+name+' 🧚');
 }
 
-// Render spirit comment section for a diary or checkin
+// Compact bubble indicator for diary/checkin cards
+function spiritBubble(parentId) {
+  if (!S.companionMode) return '';
+  var key = 'spiritChat_'+parentId;
+  var chat = safeParse(localStorage.getItem('wb-'+key), '[]');
+  var spiritMsgs = chat.filter(function(m){return m.role==='assistant';});
+  if (!spiritMsgs.length) return '';
+  return '<span class="file-pill" style="background:var(--accent-light);color:var(--accent);cursor:pointer;display:inline-flex;align-items:center;gap:2px" onclick="event.stopPropagation();showSpiritChat(\''+parentId+'\')" title="查看精灵评论">💬'+spiritMsgs.length+'</span>';
+}
+
+// Show spirit chat in a modal
+function showSpiritChat(parentId) {
+  ensureSpirits();
+  var sp = S.spirits[0];
+  var key = 'spiritChat_'+parentId;
+  var chat = safeParse(localStorage.getItem('wb-'+key), '[]');
+
+  var msgsHTML = chat.map(function(m){
+    if (m.role==='user') {
+      return '<div class="chat-msg user" style="max-width:80%;font-size:.75rem">'+esc(m.content)+'</div>';
+    }
+    return '<div style="display:flex;align-items:flex-start;gap:6px;margin:4px 0">'+
+      '<img src="./'+(sp?sp.img:'')+'" style="width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0" alt="">'+
+      '<div><span class="text-xs font-bold" style="color:'+(sp?sp.color:'var(--sub)')+'">'+(sp?esc(sp.name):'精灵')+'</span>'+
+      '<div class="chat-msg assistant" style="max-width:80%;font-size:.75rem;margin:0">'+esc(m.content)+'</div></div></div>';
+  }).join('') || '<p class="text-xs py-4 text-center" style="color:var(--sub)">暂无评论</p>';
+
+  var title = (sp?sp.emoji:'')+' '+(sp?sp.name:'精灵')+'的评论';
+
+  // Use a simple modal-like approach
+  var ct = document.getElementById('modal-container');
+  ct.innerHTML = '<div class="modal-overlay scale-in" onclick="if(event.target===this)closeModal()">'+
+    '<div class="card p-4 w-full max-w-sm mx-4 max-h-[70vh] overflow-y-auto" onclick="event.stopPropagation()">'+
+      '<div class="flex items-center justify-between mb-3">'+
+        '<h3 class="font-bold text-sm">💬 '+title+'</h3>'+
+        '<button class="text-xl leading-none cursor-pointer opacity-50 hover:opacity-100 transition-opacity" onclick="closeModal()" style="color:var(--text)">&times;</button>'+
+      '</div>'+
+      '<div class="space-y-1 max-h-80 overflow-y-auto mb-3">'+msgsHTML+'</div>'+
+      '<div class="flex gap-1.5">'+
+        '<input class="input flex-1" id="spirit-input-'+parentId+'" placeholder="回复..." style="font-size:.8rem;padding:.4rem .7rem" onkeydown="if(event.key===\'Enter\'){sendToSpirits(\''+parentId+'\',\'\',\'\');setTimeout(function(){showSpiritChat(\''+parentId+'\');},500)}">'+
+        '<button class="btn btn-primary btn-xs" onclick="sendToSpirits(\''+parentId+'\',\'\',\'\');setTimeout(function(){showSpiritChat(\''+parentId+'\');},500)">发送</button>'+
+      '</div>'+
+    '</div></div>';
+}
+
+// Render spirit comment section for a diary or checkin (inline, used by showSpiritChat popup)
 function renderSpiritComments(parentId, contextTitle, contextContent) {
   if (!S.companionMode) return '';
   ensureSpirits();
