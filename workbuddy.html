@@ -2121,25 +2121,25 @@ function copyAccount(id) {
 
 function ensureSpirits() {
   if (!S.spirits || !S.spirits.length) {
+    // Guard against recursive shuffle
+    if (window._shufflingSpirits) return;
+    window._shufflingSpirits = true;
     shuffleSpirits();
+    window._shufflingSpirits = false;
   }
 }
 
 function shuffleSpirits() {
-  // Reset companion mode to on when shuffling
-  S.companionMode = true;
-  localStorage.setItem('wb-companionMode','1');
   var pool = [...SPIRIT_POOL];
   for (var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=pool[i];pool[i]=pool[j];pool[j]=t;}
   var picked = pool.slice(0,1);
   S.spirits = picked.map(function(p){
-    // Name = image filename without extension
     var name = p.img.replace(/\.(png|jpg|jpeg|gif|webp)$/i,'');
     return {id:uid(), name:name, personality:p.personality, img:p.img, color:p.color, tone:p.tone};
   });
+  S.companionMode = true;
+  localStorage.setItem('wb-companionMode','1');
   save('spirits');
-  renderSpirits();
-  renderLion();
 }
 
 function toggleCompanionMode() {
@@ -2151,8 +2151,11 @@ function toggleCompanionMode() {
 function renderSpirits() {
   ensureSpirits();
   var panel = document.getElementById('panel-spirits');
+  if (!panel) return;
+  if (!S.spirits || !S.spirits.length) return;
   var isOn = S.companionMode;
   var cur = S.spirits[0];
+  if (!cur) return;
   var memCount = (S.spiritMemories[cur.id]||[]).length;
 
   // Current spirit card
@@ -2186,7 +2189,7 @@ function renderSpirits() {
       '<h3 class="font-bold text-lg">🧚 我的精灵</h3>'+
       '<div class="flex gap-2">'+
         '<button class="btn btn-sm" style="background:'+(isOn?'var(--accent)':'var(--hover)')+';color:'+(isOn?'#fff':'var(--sub)')+';border:none;font-size:.75rem" onclick="toggleCompanionMode()">'+(isOn?'🟢 陪伴中':'⏸ 已封存')+'</button>'+
-        '<button class="btn btn-ghost btn-sm" onclick="if(confirm(\'随机换一个精灵？当前精灵的记忆将被清空。\')){shuffleSpirits();toast(\'新精灵来了！🧚\')}">🎲 随机</button>'+
+        '<button class="btn btn-ghost btn-sm" onclick="if(confirm(\'随机换一个精灵？当前精灵的记忆将被清空。\')){shuffleSpirits();renderSpirits();renderLion();toast(\'新精灵来了！🧚\')}">🎲 随机</button>'+
       '</div>'+
     '</div>'+
     '<p class="text-sm mb-3" style="color:var(--sub)">'+(isOn?'陪伴模式已开启：精灵会在日记和打卡中主动评论你。右下角浮动头像同步为当前精灵。':'陪伴模式已封存：精灵暂时休眠，不会评论。')+'</p>'+
