@@ -1111,9 +1111,9 @@ function renderFin() {
     </div>`).join('');
   if (!incBars) incBars = '<p class="text-xs py-4 text-center" style="color:var(--sub)">本月无收入</p>';
 
-  // Last 6 months trend
+  // Last 3 months trend
   const trendMonths = [];
-  for (let i=5;i>=0;i--) {
+  for (let i=2;i>=0;i--) {
     let m = S.finMonth-i; let y = S.finYear;
     while (m<0) { m+=12; y--; }
     trendMonths.push({y,m,ms:`${y}-${String(m+1).padStart(2,'0')}`});
@@ -1150,7 +1150,7 @@ function renderFin() {
       <div class="space-y-1.5">${incBars}</div>
     </div>
     <div class="card p-4">
-      <h4 class="font-semibold text-sm mb-3">📈 近6月趋势 <span class="font-normal text-xs" style="color:var(--sub)"><span style="color:var(--green)">■</span> 收入 <span style="color:var(--red)">■</span> 支出</span></h4>
+      <h4 class="font-semibold text-sm mb-3">📈 近3月趋势 <span class="font-normal text-xs" style="color:var(--sub)"><span style="color:var(--green)">■</span> 收入 <span style="color:var(--red)">■</span> 支出</span></h4>
       <div class="flex justify-around items-end">${trendHTML}</div>
     </div>
   </div>`;
