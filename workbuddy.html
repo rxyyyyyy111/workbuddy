@@ -2194,7 +2194,7 @@ function renderSpiritComments(parentId, contextTitle, contextContent) {
     return '<div style="display:flex;align-items:flex-start;gap:6px;margin:4px 0">'+
       '<img src="./'+(sp?sp.img:'')+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0" alt="">'+
       '<div><span class="text-xs font-bold" style="color:'+(sp?sp.color:'var(--sub)')+'">'+(sp?esc(sp.name):'?')+'</span>'+
-      '<div class="chat-msg assistant" style="max-width:85%;font-size:.75rem;margin:0">'+esc(m.content)+'</div></div></div>';
+      '<div class="chat-msg assistant" style="max-width:80%;font-size:.75rem;margin:0">'+esc(m.content)+'</div></div></div>';
   }).join('');
 
   var avatars = S.spirits.map(function(s){return '<img src="./'+s.img+'" style="width:20px;height:20px;border-radius:50%;object-fit:cover" title="'+esc(s.name)+'" alt="">';}).join('');
@@ -2324,7 +2324,7 @@ function refreshSpiritMsgs(parentId, chat) {
     return '<div style="display:flex;align-items:flex-start;gap:6px;margin:4px 0">'+
       '<img src="./'+(sp?sp.img:'')+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0" alt="">'+
       '<div><span class="text-xs font-bold" style="color:'+(sp?sp.color:'var(--sub)')+'">'+(sp?esc(sp.name):'?')+'</span>'+
-      '<div class="chat-msg assistant" style="max-width:85%;font-size:.75rem;margin:0">'+esc(m.content)+'</div></div></div>';
+      '<div class="chat-msg assistant" style="max-width:80%;font-size:.75rem;margin:0">'+esc(m.content)+'</div></div></div>';
   }).join('');
   el.innerHTML = html||'<p class="text-xs py-2" style="color:var(--sub);opacity:.6">精灵们在等你说话～</p>';
   el.scrollTop = el.scrollHeight;
