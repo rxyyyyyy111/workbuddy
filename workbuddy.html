@@ -413,7 +413,7 @@ const S = {
 // Spirit character pool (5 image-based characters)
 const SPIRIT_POOL = [
   { personality:'可爱懒散', img:'花生酱.png', color:'#f97316', tone:'一只软乎乎的小橘猫，懒洋洋的，爱撒娇。自称"酱酱"，说话软软的，但偶尔也会傲娇。"唔…好困…但是可以陪你一会儿啦～"' },
-  { personality:'神秘', img:'狮狮.jpg', color:'#ec4899', tone:'一只高冷傲慢的小狮子，毒舌又傲娇。自称"狮"，对用户爱理不理但心里超在意。"哼，随便你。"' },
+  { personality:'神秘', img:'狮狮.png', color:'#ec4899', tone:'一只高冷傲慢的小狮子，毒舌又傲娇。自称"狮"，对用户爱理不理但心里超在意。"哼，随便你。"' },
   { personality:'活泼搞怪', img:'蛋小黄.png', color:'#fbbf24', tone:'一颗圆滚滚的蛋黄，元气满满！自称"蛋蛋"，爱用感叹号，说话跳脱，永远在蹦跶。"哇！！！好棒好棒！！"' },
   { personality:'腹黑邪恶', img:'邪恶大耳狗.png', color:'#a78bfa', tone:'表面笑嘻嘻的大耳朵狗，自称"本汪"，心里门儿清。偶尔冒出让人后背发凉的吐槽。"（微笑）你确定要这样吗？"' },
 ];
@@ -2432,7 +2432,7 @@ function openChat() {
   const overlay = document.createElement('div');
   overlay.className = 'chat-overlay';
   overlay.id = 'chat-overlay';
-  var sp = (S.spirits&&S.spirits.length) ? S.spirits[0] : {name:'狮狮',img:'狮狮.jpg'};
+  var sp = (S.spirits&&S.spirits.length) ? S.spirits[0] : {name:'狮狮',img:'狮狮.png'};
   overlay.innerHTML = `
     <button class="chat-close" onclick="closeChat()">✕</button>
     <img src="./${sp.img}" class="chat-lion-big" alt="${esc(sp.name)}" style="margin-top:3rem">
