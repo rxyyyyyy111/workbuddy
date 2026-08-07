@@ -1881,12 +1881,15 @@ const WH_ICONS = { '衣柜':'👗', '化妆品':'💄', '护肤品':'🧴', '食
 
 // Migrate hardcoded categories to dynamic storage on first load
 function ensureWHCats() {
+  // Only seed default categories once, on first-ever load
+  if (localStorage.getItem('wb-whCatsInited')) return;
   if (!S.warehouseCats || !S.warehouseCats.length) {
     S.warehouseCats = WH_CATS.map(function(name) {
       return { id: uid(), name: name, icon: '' };
     });
     save('warehouseCats');
   }
+  localStorage.setItem('wb-whCatsInited', '1');
 }
 
 // Get icon HTML for a category: user image or default emoji
