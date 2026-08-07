@@ -2431,14 +2431,14 @@ function openChat() {
   var chatInput = document.getElementById('chat-input');
   chatInput.addEventListener('keydown', e => { if (e.key==='Enter') sendChat(); });
 
-  // Simple: lift chat box 40% when keyboard opens
+  // Shrink card from bottom when keyboard opens (top stays fixed)
   chatInput.addEventListener('focus', function() {
     var box = document.getElementById('chat-box-el');
-    if (box) { box.style.transform = 'translateY(-40vh)'; box.style.transition = 'transform .3s ease'; }
+    if (box) { box.style.marginBottom = '40vh'; box.style.transition = 'margin-bottom .3s ease'; }
   });
   chatInput.addEventListener('blur', function() {
     var box = document.getElementById('chat-box-el');
-    if (box) box.style.transform = '';
+    if (box) box.style.marginBottom = '';
   });
 
   // Greeting if empty
