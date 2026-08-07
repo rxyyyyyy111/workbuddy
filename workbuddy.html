@@ -349,6 +349,9 @@ tailwind.config = {
 </div>
 
 <script>
+window.onerror = function(msg, url, line, col, err) {
+  document.body.innerHTML = '<div style="padding:2rem;color:red;font-family:monospace"><h2>JS Error</h2><pre>'+msg+'\nLine: '+line+', Col: '+col+'</pre></div>';
+};
 // ==================== GLOBAL STATE ====================
 function safeParse(raw, fallbackStr) {
   try { return JSON.parse(raw || fallbackStr); } catch(e) { return JSON.parse(fallbackStr); }
@@ -3090,17 +3093,22 @@ function importData() {
 
 // ==================== BOOT ====================
 function boot() {
-  document.documentElement.classList.toggle('dark', S.theme==='dark');
-  updateThemeBtn();
-  buildNav();
-  go(S.panel, false);
-  updateClock();
-  renderLion();
-  checkSharedArchive();
-  setInterval(updateClock, 30000);
-  // Register service worker for PWA
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  try {
+    // Ensure spirits initialized before any rendering
+    ensureSpirits();
+    document.documentElement.classList.toggle('dark', S.theme==='dark');
+    updateThemeBtn();
+    buildNav();
+    go(S.panel, false);
+    updateClock();
+    renderLion();
+    checkSharedArchive();
+    setInterval(updateClock, 30000);
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js').catch(function(){});
+    }
+  } catch(e) {
+    document.body.innerHTML = '<div style="padding:2rem;color:red;font-family:monospace"><h2>Boot Error</h2><pre>'+e.message+'</pre><pre>'+e.stack+'</pre></div>';
   }
 }
 boot();
