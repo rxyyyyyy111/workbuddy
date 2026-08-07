@@ -585,13 +585,13 @@ function toast(msg, type='success') {
 function modal(title, bodyHTML, onSave, wide) {
   const ct = document.getElementById('modal-container');
   ct.innerHTML = `<div class="modal-overlay scale-in" onclick="if(event.target===this)closeModal()">
-    <div class="card p-5 w-full ${wide?'max-w-lg':'max-w-md'} mx-4" style="max-height:85vh;display:flex;flex-direction:column">
-      <div class="flex items-center justify-between mb-4 flex-shrink-0">
+    <div class="card p-5 w-full ${wide?'max-w-lg':'max-w-md'} mx-4" style="max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch">
+      <div class="flex items-center justify-between mb-4">
         <h3 class="font-bold text-lg">${title}</h3>
         <button class="text-xl leading-none cursor-pointer opacity-50 hover:opacity-100 transition-opacity" onclick="closeModal()" style="color:var(--text)">&times;</button>
       </div>
-      <div id="modal-body" style="overflow-y:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0">${bodyHTML}</div>
-      <div class="flex gap-2 mt-5 justify-end flex-shrink-0">
+      <div>${bodyHTML}</div>
+      <div class="flex gap-2 mt-5 justify-end">
         <button class="btn btn-ghost btn-sm" onclick="closeModal()">取消</button>
         <button class="btn btn-primary btn-sm" id="modal-save">保存</button>
       </div>
