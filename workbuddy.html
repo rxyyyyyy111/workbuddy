@@ -385,7 +385,9 @@ tailwind.config = {
 
 <script>
 window.onerror = function(msg, url, line, col, err) {
-  document.body.innerHTML = '<div style="padding:2rem;color:red;font-family:monospace"><h2>JS Error</h2><pre>'+msg+'\nLine: '+line+', Col: '+col+'</pre></div>';
+  console.error('JS Error:', msg, 'Line:', line, 'Col:', col, err);
+  try { toast('操作出错，请刷新页面后重试', 'error'); } catch(e) {}
+  return true; // prevent default error UI
 };
 // ==================== GLOBAL STATE ====================
 function safeParse(raw, fallbackStr) {
@@ -457,20 +459,68 @@ const CAT_EXPENSE = ['餐饮','购物','交通','住房','娱乐','医疗','教�
 const ANN_TYPES = { love:'💕 恋爱', birthday:'🎂 生日', memory:'💫 纪念', other:'📌 其他' };
 const MONTHS = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
 
-function save(k) { localStorage.setItem('wb-'+k, JSON.stringify(S[k])); }
+function save(k) {
+  try {
+    localStorage.setItem('wb-'+k, JSON.stringify(S[k]));
+  } catch(e) {
+    if (e.name === 'QuotaExceededError' || e.toString().indexOf('quota')!==-1) {
+      toast('存储空间不足！请清理一些带图片的记录后重试', 'error');
+    }
+    console.error('save error:', k, e);
+  }
+}
 function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
 function fmt(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function esc(s) { const el=document.createElement('div'); el.textContent=s; return el.innerHTML; }
 
-// Helper: read multiple files as base64 data URLs
+// Compress image: resize to max 1200px, JPEG quality 0.7, before base64 encoding
+function compressImage(file) {
+  return new Promise(function(resolve) {
+    // Only compress images > 200KB, and only JPEG/PNG/WebP
+    if (file.size < 200*1024) {
+      var r = new FileReader();
+      r.onload = function() { resolve(r.result); };
+      r.onerror = function() { resolve(''); };
+      r.readAsDataURL(file);
+      return;
+    }
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function() {
+      URL.revokeObjectURL(url);
+      var maxW = 1200, maxH = 1200;
+      var w = img.width, h = img.height;
+      if (w <= maxW && h <= maxH) {
+        // Already small enough, just read
+        var r = new FileReader();
+        r.onload = function() { resolve(r.result); };
+        r.onerror = function() { resolve(''); };
+        r.readAsDataURL(file);
+        return;
+      }
+      // Scale down
+      if (w > h) { h = Math.round(h * maxW / w); w = maxW; }
+      else { w = Math.round(w * maxH / h); h = maxH; }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
+    };
+    img.onerror = function() {
+      URL.revokeObjectURL(url);
+      resolve('');
+    };
+    img.src = url;
+  });
+}
+
+// Helper: read multiple files as compressed base64 data URLs
 function readFiles(fileList) {
   if (!fileList||!fileList.length) return Promise.resolve([]);
-  return Promise.all(Array.from(fileList).map(file => new Promise(resolve => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result);
-    r.onerror = () => resolve('');
-    r.readAsDataURL(file);
-  }))).then(arr => arr.filter(Boolean));
+  return Promise.all(Array.from(fileList).map(function(file) {
+    return compressImage(file).catch(function() { return ''; });
+  })).then(function(arr) { return arr.filter(Boolean); });
 }
 
 // Helper: get images array from a record (backward compat: image string → images array)
