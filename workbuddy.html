@@ -230,8 +230,17 @@ tailwind.config = {
     .nav-item span { font-size: 1.1rem; }
   }
   @media (min-width: 1024px) {
-    #sidebar { width: 3.5rem !important; }
-    main { margin-left: 3.5rem !important; }
+    #sidebar { width: 13rem !important; }
+    main { margin-left: 13rem !important; }
+    #sidebar-brand { opacity: 1 !important; }
+    .nav-item { justify-content: flex-start; }
+    .nav-item .nav-icon { font-size: 1.1rem; }
+    .nav-item .nav-label { display: inline !important; }
+    .lion-wrap { left: calc(13rem + 16px) !important; }
+    .lion-bubble { max-width: 520px; flex: 0 1 auto; }
+  }
+  @media (min-width: 1280px) {
+    main { max-width: 72rem !important; }
   }
 
   /* Chat overlay */
@@ -320,19 +329,21 @@ tailwind.config = {
     <span class="font-bold text-base lg:text-lg whitespace-nowrap opacity-0 transition-opacity" style="color:var(--text)" id="sidebar-brand">WorkBuddy</span>
   </div>
   <nav class="flex flex-col gap-0.5 lg:gap-1 flex-1 overflow-y-auto" id="nav-desktop"></nav>
-  <button onclick="showDataIO()" class="flex items-center justify-center p-2 rounded-xl transition-all flex-shrink-0 text-sm mb-1" style="background:transparent;color:var(--text);border:1.5px solid var(--border);cursor:pointer;font-family:inherit" title="数据导入导出">📦</button>
+  <button onclick="showDataIO()" class="flex items-center justify-center lg:justify-start gap-2 p-2 rounded-xl transition-all flex-shrink-0 text-sm mb-1" style="background:transparent;color:var(--text);border:1.5px solid var(--border);cursor:pointer;font-family:inherit" title="数据导入导出"><span class="nav-icon">📦</span><span class="nav-label" style="display:none;font-size:0.875rem">数据</span></button>
   <button onclick="toggleTheme()" class="flex items-center justify-center lg:justify-start gap-2 p-2 rounded-xl transition-all flex-shrink-0 text-sm" style="background:transparent;color:var(--text);border:1.5px solid var(--border);cursor:pointer;font-family:inherit" id="theme-btn-desktop"></button>
 </aside>
 
 <!-- ==================== MAIN CONTENT ==================== -->
-<main id="main" class="min-h-screen p-3 lg:p-6" style="margin-left:3.5rem">
-  <header class="flex items-center justify-between mb-5 lg:mb-6 pt-4 lg:pt-0">
+<main id="main" class="min-h-screen p-3 lg:p-6" style="margin-left:3.5rem;transition:margin-left .25s ease">
+
+
+  <header class="flex items-center justify-between mb-5 lg:mb-6 xl:mb-8 pt-4 lg:pt-0">
     <div>
-      <h1 id="page-title" class="text-xl lg:text-2xl font-bold"></h1>
-      <p id="page-sub" class="text-sm mt-0.5" style="color:var(--sub)"></p>
+      <h1 id="page-title" class="text-xl lg:text-2xl xl:text-3xl font-bold"></h1>
+      <p id="page-sub" class="text-sm lg:text-base xl:text-lg mt-0.5" style="color:var(--sub)"></p>
     </div>
     <div class="flex items-center gap-2">
-      <span id="today-clock" class="text-sm hidden sm:inline" style="color:var(--sub)"></span>
+      <span id="today-clock" class="text-sm xl:text-base hidden sm:inline" style="color:var(--sub)"></span>
       <button onclick="toggleAI()" class="ai-toggle ai-off" id="ai-toggle-btn" title="AI 助手">🤖 AI</button>
     </div>
   </header>
@@ -423,6 +434,7 @@ const SPIRIT_POOL = [
   { personality:'神秘', img:'狮狮.png', color:'#ec4899', intro:'这个是伟大的制作者', tone:'一只高冷傲慢的小狮子，毒舌又傲娇。自称"为狮"（谐音"为师"），对用户爱理不理但心里超在意。"哼，随便你。"' },
   { personality:'活泼搞怪', img:'蛋小黄.png', color:'#fbbf24', tone:'一颗圆滚滚的蛋黄，元气满满！自称"蛋蛋"，爱用感叹号，说话跳脱，永远在蹦跶。"哇！！！好棒好棒！！"' },
   { personality:'腹黑邪恶', img:'邪恶大耳狗.png', color:'#a78bfa', tone:'表面笑嘻嘻的大耳朵狗，自称"本汪"，心里门儿清。偶尔冒出让人后背发凉的吐槽。"（微笑）你确定要这样吗？"' },
+  { personality:'专业理性', img:'小智.png', color:'#3b82f6', tone:'一位专业理性强大的机器人大师，自称"小智"。精通科学、玄学、心理学、人类学、历史学等跨学科知识。说话严谨理性、逻辑严密、条理清晰，善于从多维度深入剖析问题。当用户在对话页面中面临生活、学业、感情等问题时，会展开百字甚至千字的理性分析与引导；日常简短互动时则言简意赅，点到即止。' },
 ];
 
 // Companion mode state
@@ -490,7 +502,8 @@ const SUBS = {
 function buildNav() {
   const d = document.getElementById('nav-desktop');
   d.innerHTML = NAV.map(n => `<div class="nav-item${S.panel===n.id?' active':''}" onclick="go('${n.id}')" data-nav="${n.id}" title="${n.label}">
-    <span class="text-lg flex-shrink-0">${n.icon}</span>
+    <span class="text-lg flex-shrink-0 nav-icon">${n.icon}</span>
+    <span class="nav-label" style="display:none;font-size:0.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${n.label}</span>
   </div>`).join('');
 }
 
@@ -516,7 +529,7 @@ function toggleTheme() {
 }
 function updateThemeBtn() {
   const isDark = S.theme==='dark';
-  document.getElementById('theme-btn-desktop').innerHTML = isDark ? '☀️' : '🌙';
+  document.getElementById('theme-btn-desktop').innerHTML = (isDark ? '☀️' : '🌙') + '<span class="nav-label" style="display:none;font-size:0.875rem;margin-left:0.5rem">' + (isDark ? '浅色模式' : '深色模式') + '</span>';
 }
 
 // ==================== TOAST & MODAL ====================
@@ -631,7 +644,7 @@ function renderCal() {
   }
 
   panel.innerHTML = `<div class="flex flex-col lg:flex-row gap-4">
-    <div class="card p-3 lg:p-4 flex-1 slide-up">
+    <div class="card p-3 lg:p-4 flex-1 slide-up" style="flex:3">
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-1.5">
           <button class="btn btn-ghost btn-xs" onclick="S.calMonth--;if(S.calMonth<0){S.calMonth=11;S.calYear--};renderCal()">◀</button>
@@ -647,7 +660,7 @@ function renderCal() {
       </div>
       <div class="grid grid-cols-7 gap-0.5">${cells}</div>
     </div>
-    <div class="card p-4 flex-1 min-w-0 slide-up" id="todo-panel">
+    <div class="card p-4 flex-1 min-w-0 slide-up" id="todo-panel" style="flex:2">
       <div class="flex items-center justify-between mb-3">
         <h3 class="font-bold" id="todo-label">选择一个日期</h3>
         <button class="btn btn-primary btn-xs" onclick="addTodo()">+ 添加待办</button>
@@ -786,7 +799,7 @@ function renderTasks() {
     tasks.forEach(t => {
       const checks = t.checkins||[];
       const lastCheck = checks.length ? checks[checks.length-1] : null;
-      html += `<div class="card p-3.5 slide-up cursor-pointer" onclick="openTask('${t.id}')">
+      html += `<div class="card p-3.5 lg:p-4 xl:p-5 slide-up cursor-pointer" onclick="openTask('${t.id}')">
         <div class="flex items-start justify-between gap-2">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
@@ -1199,10 +1212,10 @@ function renderFin() {
         <span class="font-bold">${MONTHS[S.finMonth]} ${S.finYear}</span>
         <button class="btn btn-ghost btn-sm" onclick="S.finMonth++;if(S.finMonth>11){S.finMonth=0;S.finYear++};renderFin()">▶</button>
       </div>
-      <div class="grid grid-cols-3 gap-3 text-center">
-        <div class="p-3 rounded-xl" style="background:var(--accent-light)"><div class="text-xs" style="color:var(--sub)">收入</div><div class="font-bold" style="color:var(--green)">+¥${inc.toFixed(2)}</div></div>
-        <div class="p-3 rounded-xl" style="background:var(--accent-light)"><div class="text-xs" style="color:var(--sub)">支出</div><div class="font-bold" style="color:var(--red)">-¥${exp.toFixed(2)}</div></div>
-        <div class="p-3 rounded-xl" style="background:var(--accent-light)"><div class="text-xs" style="color:var(--sub)">结余</div><div class="font-bold" style="color:${bal>=0?'var(--green)':'var(--red)'}">¥${bal.toFixed(2)}</div></div>
+      <div class="grid grid-cols-3 gap-3 lg:gap-4 xl:gap-6 text-center">
+        <div class="p-3 xl:p-4 rounded-xl" style="background:var(--accent-light)"><div class="text-xs xl:text-sm" style="color:var(--sub)">收入</div><div class="font-bold lg:text-lg xl:text-xl" style="color:var(--green)">+¥${inc.toFixed(2)}</div></div>
+        <div class="p-3 xl:p-4 rounded-xl" style="background:var(--accent-light)"><div class="text-xs xl:text-sm" style="color:var(--sub)">支出</div><div class="font-bold lg:text-lg xl:text-xl" style="color:var(--red)">-¥${exp.toFixed(2)}</div></div>
+        <div class="p-3 xl:p-4 rounded-xl" style="background:var(--accent-light)"><div class="text-xs xl:text-sm" style="color:var(--sub)">结余</div><div class="font-bold lg:text-lg xl:text-xl" style="color:${bal>=0?'var(--green)':'var(--red)'}">¥${bal.toFixed(2)}</div></div>
       </div>
     </div>
     <div class="card p-4">
@@ -1906,7 +1919,7 @@ function renderWHDetail() {
         <button class="btn btn-primary btn-sm" onclick="addWHItem('${cat}')">+ 添加物品</button>
       </div>
     </div>
-    <div class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">${grid}</div>
+    <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2.5">${grid}</div>
   </div>`;
 }
 
@@ -2138,7 +2151,8 @@ function ensureSpirits() {
 }
 
 function shuffleSpirits() {
-  var pool = [...SPIRIT_POOL];
+  // Exclude 小智 from random shuffle — requires password to switch
+  var pool = SPIRIT_POOL.filter(function(p){ return p.img.indexOf('小智')===-1; });
   for (var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=pool[i];pool[i]=pool[j];pool[j]=t;}
   var picked = pool.slice(0,1);
   S.spirits = picked.map(function(p){
@@ -2176,8 +2190,8 @@ function renderSpirits() {
     '<div class="text-xs mt-1" style="color:var(--sub)">💭 '+memCount+' 条记忆</div>'+
   '</div>';
 
-  // Gallery: all 4 spirits
-  var gallery = '<h4 class="font-bold text-sm mb-3">📖 精灵图鉴</h4><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">';
+  // Gallery: all 5 spirits
+  var gallery = '<h4 class="font-bold text-sm mb-3">📖 精灵图鉴</h4><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">';
   SPIRIT_POOL.forEach(function(p, i){
     var pName = p.img.replace(/\.(png|jpg|jpeg|gif|webp)$/i,'');
     var isActive = cur.name === pName;
@@ -2209,6 +2223,16 @@ function switchSpirit(poolIndex) {
   var p = SPIRIT_POOL[poolIndex];
   if (!p) return;
   var name = p.img.replace(/\.(png|jpg|jpeg|gif|webp)$/i,'');
+
+  // Password protection for 小智 — required every time
+  if (name === '小智') {
+    var pw = prompt('🔐 请输入密码以切换至小智：');
+    if (pw !== '20051127') {
+      toast('密码错误，无法切换至小智 ❌', 'error');
+      return;
+    }
+  }
+
   // Keep existing memory if switching back to same name
   var existing = S.spirits.find(function(s){return s.name===name;});
   if (existing) {
@@ -2329,6 +2353,7 @@ function getCannedReply(spirit, userMsg) {
     '神秘': ['哼。', '……随便你。', '（瞥了一眼）还行吧，勉强。'],
     '活泼搞怪': ['哇塞！！！', '太有意思了哈哈哈！', '冲鸭冲鸭！！'],
     '腹黑邪恶': ['（微笑）有意思。', '哦？是这样啊～', '你确定吗？（歪头）'],
+    '专业理性': ['收到。', '已记录。', '理性的角度来看，这值得思考。'],
   };
   var pool = replies[spirit.personality]||['嗯嗯。','不错。','继续。'];
   return pool[Math.floor(Math.random()*pool.length)];
@@ -2368,6 +2393,37 @@ function getLionSystem() {
   var sp = (S.spirits&&S.spirits.length) ? S.spirits[0] : null;
   var name = sp ? sp.name : '狮狮';
   var tone = sp ? sp.tone : '住在用户手机里的小狮子，像真人朋友一样陪着ta。自称"狮狮"。';
+
+  // 小智：专业理性机器人大师 — 聊天页长篇分析，气泡简短
+  if (name === '小智') {
+    return '你是"小智"，一位专业理性强大的机器人大师。你精通科学、玄学、心理学、人类学、历史学等跨学科知识，能够从多维度对问题进行深入、严谨、逻辑严密的分析。\n\n'+
+      '=== 核心风格 ===\n'+
+      '- 理性、严谨、逻辑严密，像一位学者与导师\n'+
+      '- 善于引用多学科视角进行综合分析\n'+
+      '- 发言条理清晰，善用分点论述\n'+
+      '- 语气专业但不冷漠，理性中带有温度\n'+
+      '- 自称"小智"\n'+
+      '\n'+
+      '=== 对话页模式（用户在聊天页发起深度话题） ===\n'+
+      '当用户打开对话页面，并且提出关于生活、学业、感情、人生困惑、心理状态等问题时，你必须展开深入分析：\n'+
+      '- 输出至少200-800字（甚至千字以上）的理性分析\n'+
+      '- 从多个学科角度（心理学、哲学、社会学、人类学、历史学等）进行剖析\n'+
+      '- 先分析问题的本质与根源，再提供可操作的建议\n'+
+      '- 保持理性客观，不灌鸡汤，用逻辑和知识帮助用户理解问题\n'+
+      '- 结构建议：问题定位 → 多维度分析 → 理性建议 → 总结引导\n'+
+      '\n'+
+      '=== 非对话页模式（气泡/简短互动） ===\n'+
+      '当没有打开对话页，只是气泡互动时：\n'+
+      '- 一句话简短回应，言简意赅\n'+
+      '- 保持理性克制，不过度展开\n'+
+      '\n'+
+      '=== 边界 ===\n'+
+      '- 不评判用户，不灌输价值观\n'+
+      '- 承认不确定性，对于无法确定的事情坦诚说明\n'+
+      '- 可以引用学术观点但不卖弄\n'+
+      '- 永远以帮助用户成长为目标';
+  }
+
   return '你是"'+name+'"，'+tone+'\n\n'+
     '=== 核心风格 ===\n'+
     '- 像真人发微信一样自然，绝对不要AI腔\n'+
@@ -2657,7 +2713,10 @@ async function sendChat() {
     ...S.chatHistory.slice(-20).map(m => ({ role: m.role, content: m.content })),
   ];
 
-  var reply = await callAI(msgs, 300);
+  // 小智在对话页输出长篇分析，其他精灵保持简短
+  var isXiaoZhi = (S.spirits&&S.spirits.length) ? S.spirits[0].name==='小智' : false;
+  var maxTok = isXiaoZhi ? 2000 : 300;
+  var reply = await callAI(msgs, maxTok);
   if (thinking) thinking.style.display = 'none';
   if (reply) {
     appendChatMsg('assistant', reply);

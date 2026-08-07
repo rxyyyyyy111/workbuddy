@@ -1,12 +1,13 @@
-const CACHE = 'workbuddy-v101';
+const CACHE = 'workbuddy-v102';
 const ASSETS = [
   './workbuddy.html',
   './manifest.json',
   './图标.png',
-  './shi.jpg',
+  './狮狮.jpg',
   './花生酱.png',
   './蛋小黄.png',
   './邪恶大耳狗.png',
+  './小智.png',
   'https://cdn.tailwindcss.com/',
   'https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap',
 ];
