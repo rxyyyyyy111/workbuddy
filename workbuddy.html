@@ -291,6 +291,15 @@ tailwind.config = {
   .chat-close:hover { background: #fff; transform: scale(1.1); }
   .dark .chat-close { background: rgba(40,40,40,.9); color: #ddd; }
 
+  /* Thinking dots animation */
+  @keyframes dotPulse {
+    0%,100% { opacity: .2; }
+    50% { opacity: 1; }
+  }
+  .thinking-dots .dot1 { animation: dotPulse 1.2s infinite; }
+  .thinking-dots .dot2 { animation: dotPulse 1.2s .2s infinite; }
+  .thinking-dots .dot3 { animation: dotPulse 1.2s .4s infinite; }
+
   /* Draggable lion — smooth when dragged, pulse when ready */
   #lion-wrap { transition: none; }
   #lion-wrap.dragging { cursor: grabbing; }
@@ -2479,9 +2488,17 @@ function openChat() {
   var sp = (S.spirits&&S.spirits.length) ? S.spirits[0] : {name:'狮狮',img:'狮狮.png'};
   overlay.innerHTML = `
     <button class="chat-close" onclick="closeChat()">✕</button>
-    <img src="./${sp.img}" class="chat-lion-big" alt="${esc(sp.name)}" style="margin-top:3rem">
-    <div class="chat-box">
+    <div id="chat-header-area" style="flex-shrink:0">
+      <img src="./${sp.img}" class="chat-lion-big" alt="${esc(sp.name)}" style="margin-top:1.5rem">
+    </div>
+    <div class="chat-box" id="chat-box-el">
       <div class="chat-msgs" id="chat-msgs"></div>
+      <div id="chat-thinking" style="display:none;padding:.3rem 1rem;text-align:left">
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:var(--sub)">
+          <img src="./${sp.img}" style="width:24px;height:24px;border-radius:50%;object-fit:cover">
+          <span class="thinking-dots">${esc(sp.name)}正在思考<span class="dot1">.</span><span class="dot2">.</span><span class="dot3">.</span></span>
+        </span>
+      </div>
       <div class="chat-input-row">
         <input id="chat-input" placeholder="和${esc(sp.name)}聊天吧…" autofocus>
         <button class="btn btn-primary btn-sm" onclick="sendChat()">发送</button>
@@ -2491,12 +2508,34 @@ function openChat() {
 
   renderChatHistory();
   document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key==='Enter') sendChat(); });
+
+  // Keyboard-aware: adjust chat box when keyboard opens on mobile
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', function() {
+      var ov = document.getElementById('chat-overlay');
+      if (!ov) return;
+      var vh = window.visualViewport.height;
+      var diff = window.innerHeight - vh;
+      if (diff > 100) {
+        // Keyboard is open — push chat up
+        ov.style.paddingBottom = diff + 'px';
+        ov.style.justifyContent = 'flex-start';
+        var box = document.getElementById('chat-box-el');
+        if (box) box.style.maxHeight = (vh - 160) + 'px';
+      } else {
+        ov.style.paddingBottom = '';
+        ov.style.justifyContent = '';
+        var box2 = document.getElementById('chat-box-el');
+        if (box2) box2.style.maxHeight = '';
+      }
+    });
+  }
+
   // Greeting if empty
   if (!S.chatHistory.length) {
     var spName2 = (S.spirits&&S.spirits.length) ? S.spirits[0].name : '狮狮';
     appendChatMsg('assistant', '嗨嗨～我是'+spName2+'！有什么想聊的都可以跟我说哦 💬');
   } else {
-    // Trim history to last 100 messages to avoid token explosion
     if (S.chatHistory.length > 100) S.chatHistory = S.chatHistory.slice(-100);
   }
 }
@@ -2695,6 +2734,12 @@ async function sendChat() {
     return;
   }
 
+  // Show thinking indicator
+  var thinking = document.getElementById('chat-thinking');
+  if (thinking) thinking.style.display = 'block';
+  var msgsEl = document.getElementById('chat-msgs');
+  if (msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+
   // Build messages for API — targeted data context based on user's question
   var systemContent = getLionSystem() + '\n\n' + buildDataContext(text);
   const msgs = [
@@ -2703,6 +2748,7 @@ async function sendChat() {
   ];
 
   var reply = await callAI(msgs, 300);
+  if (thinking) thinking.style.display = 'none';
   if (reply) {
     appendChatMsg('assistant', reply);
   } else {
