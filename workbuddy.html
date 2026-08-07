@@ -328,6 +328,7 @@ tailwind.config = {
   <div id="panel-wishes" class="panel hidden"></div>
   <div id="panel-warehouse" class="panel hidden"></div>
   <div id="panel-pwd" class="panel hidden"></div>
+  <div id="panel-spirits" class="panel hidden"></div>
 </main>
 
 <div id="modal-container"></div>
@@ -394,7 +395,30 @@ const S = {
 
   // Expiry warnings dismissed by user
   expiryDismissed: safeParse(localStorage.getItem("wb-expiryDismissed"), '[]'),
+
+  // Spirit companions
+  spirits: safeParse(localStorage.getItem("wb-spirits"), '[]'),
+  spiritMemories: safeParse(localStorage.getItem("wb-spiritMemories"), '{}'),
 };
+
+// Spirit personality pool (15 types)
+const SPIRIT_POOL = [
+  { personality:'毒舌', emoji:'😈', color:'#ef4444', tone:'刀子嘴豆腐心，说话带刺但其实是关心。吐槽犀利但不真的伤人。' },
+  { personality:'暖心', emoji:'🥰', color:'#f472a6', tone:'温柔体贴，像小太阳一样温暖。永远先给抱抱再给建议。' },
+  { personality:'活泼', emoji:'🐵', color:'#fbbf24', tone:'元气满满，爱用感叹号！说话跳脱，像一只停不下来的小猴子。' },
+  { personality:'高冷', emoji:'🦢', color:'#94a3b8', tone:'冷淡寡言但意外靠谱。说话简短，能用两个字绝不说三个字。' },
+  { personality:'知性', emoji:'🦉', color:'#818cf8', tone:'理性分析派，喜欢引经据典。说话有条理，像个温柔的学姐。' },
+  { personality:'憨厚', emoji:'🐻', color:'#a78bfa', tone:'老实巴交，反应慢半拍。说话真诚朴实，偶尔冒傻气但很可爱。' },
+  { personality:'傲娇', emoji:'😤', color:'#fb923c', tone:'口是心非，明明很在意却死不承认。"哼，才不是为了你呢！"' },
+  { personality:'戏精', emoji:'🎭', color:'#ec4899', tone:'爱演爱闹，说话自带剧本。随时切换角色，从霸道总裁到苦情女主无缝衔接。' },
+  { personality:'佛系', emoji:'🧘', color:'#84cc16', tone:'一切随缘，不争不抢。"没关系啦～怎样都好～"淡定到让人想摇晃ta。' },
+  { personality:'好奇', emoji:'🐱', color:'#06b6d4', tone:'十万个为什么！对什么都充满好奇，问个不停。像只探索世界的小猫。' },
+  { personality:'浪漫', emoji:'🦄', color:'#e879f9', tone:'充满幻想，把日常过成童话。"今天的晚霞是在为你的日记配乐呢～"' },
+  { personality:'固执', emoji:'🐂', color:'#78716c', tone:'认死理，一旦认定的事九头牛拉不回来。讲道理时意外的认真。' },
+  { personality:'腹黑', emoji:'🦊', color:'#f97316', tone:'表面笑嘻嘻，心里门儿清。偶尔冒出让人后背发凉的神吐槽。' },
+  { personality:'天然呆', emoji:'🐼', color:'#14b8a6', tone:'慢半拍，经常在状况外。但无意识的一句话能直击要害，让人又气又笑。' },
+  { personality:'阳光', emoji:'🌻', color:'#eab308', tone:'永远正能量MAX！天塌下来都能找到彩虹。有时候过于乐观让人怀疑是不是缺心眼。' },
+];
 
 const CAT_INCOME = ['工资','奖金','投资','兼职','红包','其他'];
 const CAT_EXPENSE = ['餐饮','购物','交通','住房','娱乐','医疗','教育','其他'];
@@ -444,6 +468,7 @@ const NAV = [
   { id:'wishes', icon:'🌟', label:'心愿单' },
   { id:'warehouse', icon:'🏠', label:'仓库' },
   { id:'pwd', icon:'🔐', label:'密码箱' },
+  { id:'spirits', icon:'🧚', label:'精灵' },
 ];
 const SUBS = {
   calendar:'日程 · 待办 · 纪念日', tasks:'打卡、心得，记录每一步',
@@ -451,6 +476,7 @@ const SUBS = {
   archive:'珍藏你的记忆与线索', diary:'写下每天的心情与故事',
   wishes:'记录每个心愿，一步步实现', warehouse:'管理你的物品库存',
   pwd:'安全管理你的账号密码',
+  spirits:'管理你的3只AI小精灵',
 };
 
 function buildNav() {
@@ -525,6 +551,7 @@ function render(id) {
     case 'wishes': renderWishes(); break;
     case 'warehouse': renderWH(); break;
     case 'pwd': renderPwd(); break;
+    case 'spirits': renderSpirits(); break;
   }
 }
 
@@ -800,6 +827,7 @@ function renderTaskDetail() {
       </div>
       ${c.text?`<p class="text-sm whitespace-pre-wrap">${esc(c.text)}</p>`:''}
       ${renderImageHTML(getImages(c), 180)}
+      ${renderSpiritComments('checkin_'+c.id, '打卡 · '+c.date, c.text||'')}
     </div>`).join('');
   if (!checksHTML) checksHTML = '<p class="text-center py-8 text-sm" style="color:var(--sub)">还没有打卡记录，开始第一次打卡吧 💪</p>';
 
@@ -1533,6 +1561,7 @@ function viewDiary(id) {
       </div>
       ${d.content?`<p class="text-sm whitespace-pre-wrap leading-relaxed">${esc(d.content)}</p>`:'<p class="text-sm" style="color:var(--sub)">（无内容）</p>'}
       ${renderImageHTML(getImages(d), 220)}
+      ${renderSpiritComments('diary_'+id, d.title||'无标题', d.content||'')}
     </div>
   `, ()=>{}, true);
   document.getElementById('modal-save').textContent = '关闭';
@@ -2084,7 +2113,191 @@ function copyAccount(id) {
   copyText(p.account||'', '账号已复制 📋');
 }
 
-// ==================== 10. AI LION ====================
+// ==================== 10. SPIRIT COMPANIONS ====================
+// S.spirits = [{id, name, personality, emoji, color}]
+// S.spiritMemories = { [spiritId]: [{diaryId, date, role:'user'|'assistant', content}] }
+
+function ensureSpirits() {
+  if (!S.spirits || !S.spirits.length) {
+    shuffleSpirits();
+  }
+}
+
+function shuffleSpirits() {
+  var pool = [...SPIRIT_POOL];
+  // Shuffle and pick 3
+  for (var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=pool[i];pool[i]=pool[j];pool[j]=t;}
+  var names = ['小刺','团子','跳跳','冷冷','知知','憨憨','娇娇','戏精','随随','喵喵','梦梦','牛牛','狐狐','呆呆','阳阳'];
+  var picked = pool.slice(0,3);
+  S.spirits = picked.map(function(p,i){
+    return {id:uid(), name:names[pool.indexOf(p)]||('精灵'+(i+1)), personality:p.personality, emoji:p.emoji, color:p.color, tone:p.tone};
+  });
+  save('spirits');
+}
+
+function renderSpirits() {
+  ensureSpirits();
+  var panel = document.getElementById('panel-spirits');
+
+  var cards = S.spirits.map(function(s){
+    var memCount = (S.spiritMemories[s.id]||[]).length;
+    return '<div class="card p-4 slide-up text-center" style="border-top:3px solid '+s.color+'">'+
+      '<div style="font-size:3rem">'+s.emoji+'</div>'+
+      '<div class="font-bold text-sm mt-1">'+esc(s.name)+'</div>'+
+      '<div class="text-xs mt-0.5 px-3 py-0.5 rounded-full inline-block" style="background:'+s.color+'20;color:'+s.color+'">'+s.personality+'</div>'+
+      '<div class="text-xs mt-2" style="color:var(--sub)">'+esc(s.tone)+'</div>'+
+      '<div class="text-xs mt-1" style="color:var(--sub)">💭 '+memCount+' 条记忆</div>'+
+    '</div>';
+  }).join('');
+
+  panel.innerHTML = '<div class="slide-up">'+
+    '<div class="flex items-center justify-between mb-4">'+
+      '<h3 class="font-bold text-lg">🧚 我的精灵</h3>'+
+      '<button class="btn btn-primary btn-sm" onclick="if(confirm(\'随机换一组精灵？当前精灵的记忆将被清空。\')){shuffleSpirits();renderSpirits();toast(\'新精灵来了！🧚\')}">🎲 随机换一组</button>'+
+    '</div>'+
+    '<p class="text-sm mb-3" style="color:var(--sub)">你有3只专属精灵，会在日记和打卡中回复你。每只精灵的性格和记忆都独立封存。不满意可以换一组。</p>'+
+    '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">'+cards+'</div>'+
+    '<div class="card p-4">'+
+      '<h4 class="font-bold text-sm mb-2">💬 精灵如何互动？</h4>'+
+      '<p class="text-sm" style="color:var(--sub)">写完日记后，在日记详情底部可以看到精灵评论区。输入消息后，3只精灵会各自用自己的人格回复你。打卡记录下方同样有精灵评论区。</p>'+
+    '</div>'+
+  '</div>';
+}
+
+// Render spirit comment section for a diary or checkin
+function renderSpiritComments(parentId, contextTitle, contextContent) {
+  ensureSpirits();
+  var key = 'spiritChat_'+parentId;
+  var chat = safeParse(localStorage.getItem('wb-'+key), '[]');
+
+  var msgsHTML = chat.map(function(m){
+    var sp = S.spirits.find(function(s){return s.id===m.spiritId;});
+    if (m.role==='user') {
+      return '<div class="chat-msg user" style="max-width:80%;font-size:.75rem">'+esc(m.content)+'</div>';
+    }
+    return '<div style="display:flex;align-items:flex-start;gap:6px;margin:4px 0">'+
+      '<span style="font-size:1.2rem">'+(sp?sp.emoji:'🧚')+'</span>'+
+      '<div><span class="text-xs font-bold" style="color:'+(sp?sp.color:'var(--sub)')+'">'+(sp?esc(sp.name):'?')+'</span>'+
+      '<div class="chat-msg assistant" style="max-width:85%;font-size:.75rem;margin:0">'+esc(m.content)+'</div></div></div>';
+  }).join('');
+
+  return '<div class="mt-4 pt-3" style="border-top:1px solid var(--border)">'+
+    '<div class="flex items-center gap-2 mb-2">'+
+      '<span class="text-xs font-bold" style="color:var(--sub)">🧚 精灵评论区</span>'+
+      '<span class="text-xs" style="color:var(--sub);opacity:.6">'+S.spirits.map(function(s){return s.emoji;}).join('')+'</span>'+
+    '</div>'+
+    '<div class="mb-2 max-h-64 overflow-y-auto space-y-1" id="spirit-msgs-'+parentId+'">'+(msgsHTML||'<p class="text-xs py-2" style="color:var(--sub);opacity:.6">精灵们还没说话，发条消息试试～</p>')+'</div>'+
+    '<div class="flex gap-1.5">'+
+      '<input class="input flex-1" id="spirit-input-'+parentId+'" placeholder="对精灵们说点什么..." style="font-size:.8rem;padding:.4rem .7rem" onkeydown="if(event.key===\'Enter\')sendToSpirits(\''+parentId+'\',\''+(contextTitle||'').replace(/'/g,"\\'")+'\',\''+(contextContent||'').slice(0,200).replace(/'/g,"\\'")+'\')">'+
+      '<button class="btn btn-primary btn-xs" onclick="sendToSpirits(\''+parentId+'\',\''+(contextTitle||'').replace(/'/g,"\\'")+'\',\''+(contextContent||'').slice(0,200).replace(/'/g,"\\'")+'\')">发送</button>'+
+    '</div></div>';
+}
+
+async function sendToSpirits(parentId, contextTitle, contextContent) {
+  var input = document.getElementById('spirit-input-'+parentId);
+  if (!input) return;
+  var text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  var key = 'spiritChat_'+parentId;
+  var chat = safeParse(localStorage.getItem('wb-'+key), '[]');
+  chat.push({role:'user', content:text, time:Date.now()});
+  localStorage.setItem('wb-'+key, JSON.stringify(chat));
+
+  // Show user message immediately
+  refreshSpiritMsgs(parentId, chat);
+
+  if (!AI_STATE.apiKey || !AI_STATE.enabled) {
+    // Fallback: no API, use canned replies
+    S.spirits.forEach(function(s){
+      var reply = getCannedReply(s, text);
+      chat.push({role:'assistant', spiritId:s.id, content:reply, time:Date.now()});
+      // Also save to spirit memory
+      if (!S.spiritMemories[s.id]) S.spiritMemories[s.id] = [];
+      S.spiritMemories[s.id].push({parentId:parentId, date:fmt(new Date()), role:'user', content:text});
+      S.spiritMemories[s.id].push({parentId:parentId, date:fmt(new Date()), role:'assistant', content:reply});
+    });
+    save('spiritMemories');
+    localStorage.setItem('wb-'+key, JSON.stringify(chat));
+    refreshSpiritMsgs(parentId, chat);
+    return;
+  }
+
+  // Call AI for each spirit in parallel
+  var promises = S.spirits.map(function(s){
+    var context = '你是"'+s.name+'"，一只性格为"'+s.personality+'"的小精灵。'+s.tone+
+      '\n\n用户正在看一篇内容：'+contextTitle+
+      '\n内容摘要：'+contextContent.slice(0,300)+
+      '\n\n用户对你说：'+text+
+      '\n\n用你的性格口吻自然回复。简短（1-3句话），口语化，像朋友聊天。不要AI腔。';
+
+    var mems = (S.spiritMemories[s.id]||[]).slice(-10);
+    var memCtx = mems.length ? '\n\n你和用户之前的互动记忆：\n'+mems.map(function(m){return (m.role==='user'?'用户':'你')+': '+m.content;}).join('\n') : '';
+
+    var msgs = [
+      {role:'system', content:context+memCtx},
+      {role:'user', content:text}
+    ];
+    return callAI(msgs, 120).then(function(reply){
+      return {spiritId:s.id, content:reply||getCannedReply(s,text)};
+    });
+  });
+
+  var replies = await Promise.all(promises);
+  replies.forEach(function(r){
+    if (r.content) {
+      chat.push({role:'assistant', spiritId:r.spiritId, content:r.content, time:Date.now()});
+      if (!S.spiritMemories[r.spiritId]) S.spiritMemories[r.spiritId] = [];
+      S.spiritMemories[r.spiritId].push({parentId:parentId, date:fmt(new Date()), role:'user', content:text});
+      S.spiritMemories[r.spiritId].push({parentId:parentId, date:fmt(new Date()), role:'assistant', content:r.content});
+    }
+  });
+  save('spiritMemories');
+  localStorage.setItem('wb-'+key, JSON.stringify(chat));
+  refreshSpiritMsgs(parentId, chat);
+}
+
+function refreshSpiritMsgs(parentId, chat) {
+  var el = document.getElementById('spirit-msgs-'+parentId);
+  if (!el) return;
+  var html = chat.map(function(m){
+    var sp = S.spirits.find(function(s){return s.id===m.spiritId;});
+    if (m.role==='user') {
+      return '<div class="chat-msg user" style="max-width:80%;font-size:.75rem">'+esc(m.content)+'</div>';
+    }
+    return '<div style="display:flex;align-items:flex-start;gap:6px;margin:4px 0">'+
+      '<span style="font-size:1.2rem">'+(sp?sp.emoji:'🧚')+'</span>'+
+      '<div><span class="text-xs font-bold" style="color:'+(sp?sp.color:'var(--sub)')+'">'+(sp?esc(sp.name):'?')+'</span>'+
+      '<div class="chat-msg assistant" style="max-width:85%;font-size:.75rem;margin:0">'+esc(m.content)+'</div></div></div>';
+  }).join('');
+  el.innerHTML = html||'<p class="text-xs py-2" style="color:var(--sub);opacity:.6">精灵们还没说话，发条消息试试～</p>';
+  el.scrollTop = el.scrollHeight;
+}
+
+function getCannedReply(spirit, userMsg) {
+  var replies = {
+    '毒舌': ['啧，又来？', '行吧行吧，勉强理你一下。', '你这说的……算了不吐槽了。'],
+    '暖心': ['抱抱你～', '没关系，有我在呢。', '你已经很棒啦！'],
+    '活泼': ['哇！！！', '来啦来啦！', '嘿嘿，快说快说！'],
+    '高冷': ['嗯。', '知道了。', '……行。'],
+    '知性': ['让我分析一下……', '有意思的想法。', '从逻辑上来说……'],
+    '憨厚': ['嘿嘿，你说得对。', '俺觉得挺好的。', '啊？这样啊……'],
+    '傲娇': ['哼，才不是为了你才回复的！', '勉强赞同你吧。', '这、这还差不多！'],
+    '戏精': ['（扶眼镜）让我认真分析一波……', '（深情凝视）你说得对。', '（突然切换成霸道总裁模式）很好。'],
+    '佛系': ['随缘～', '怎样都好啦～', '无所谓，开心就好。'],
+    '好奇': ['咦？然后呢然后呢？', '为什么为什么？', '好好奇啊！展开说说！'],
+    '浪漫': ['今天的星星也在为你闪烁呢～', '我能闻到文字里的花香。', '你说话的样子像一首诗。'],
+    '固执': ['我坚持我的看法。', '再想想，不一定对吧？', '好吧，你说得有道理……但我保留意见。'],
+    '腹黑': ['（微笑）嗯，继续说。', '有意思呢～', '你确定是这样吗？（歪头）'],
+    '天然呆': ['诶？发生了什么？', '啊……这样啊……（反应中）', '哦！我懂了！……等等，我又不懂了。'],
+    '阳光': ['太好啦！！', '又是美好的一天！', '你超棒的！坚信！'],
+  };
+  var pool = replies[spirit.personality]||['嗯嗯。','有点意思。','继续说吧。'];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+// ==================== 11. AI LION ====================
 const AI_STATE = {
   enabled: localStorage.getItem('wb-ai-enabled')==='1',
   apiKey: localStorage.getItem('wb-ai-key')||'',
