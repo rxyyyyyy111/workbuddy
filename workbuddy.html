@@ -493,14 +493,13 @@ function readFiles(fileList) {
   })).then(function(arr) { return arr.filter(Boolean); });
 }
 
-// Generate a tappable file-upload button — input wrapped inside label for iOS
+// Generate a tappable file-upload button — uses button.click() to trigger hidden input (most iOS-reliable)
 function fileInputHTML(id, accept, multiple, label) {
   var acc = accept || 'image/*';
   var mult = multiple ? ' multiple' : '';
   var lbl = label || '📷 选择文件';
-  return '<label class="file-btn" style="position:relative;overflow:hidden">'+lbl+
-    '<input type="file" id="'+id+'" accept="'+acc+'"'+mult+' style="position:absolute;inset:0;opacity:0;cursor:pointer">'+
-    '</label>';
+  return '<button type="button" class="file-btn" onclick="document.getElementById(\''+id+'\').click()">'+lbl+'</button>'+
+    '<input type="file" id="'+id+'" accept="'+acc+'"'+mult+' style="position:absolute;width:1px;height:1px;clip:rect(0,0,0,0);overflow:hidden;white-space:nowrap">';
 }
 
 // Helper: get images array from a record (backward compat: image string → images array)
