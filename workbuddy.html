@@ -408,6 +408,7 @@ const SPIRIT_POOL = [
   { personality:'活泼搞怪', img:'蛋小黄.png', color:'#fbbf24', tone:'一颗圆滚滚的蛋黄，元气满满！爱用感叹号，说话跳脱，永远在蹦跶。"哇！！！好棒好棒！！"' },
   { personality:'高冷神秘', img:'血河小狗.png', color:'#94a3b8', tone:'来自血河的暗黑小狗，高冷寡言但意外靠谱。说话简短冷淡但直击要害。"……嗯。知道了。"' },
   { personality:'腹黑邪恶', img:'邪恶大耳狗.png', color:'#a78bfa', tone:'表面笑嘻嘻的大耳朵狗，心里门儿清。偶尔冒出让人后背发凉的发言，但其实很护短。"（微笑）你确定要这样吗？"' },
+  { personality:'温暖治愈', img:'shi.jpg', color:'#ec4899', tone:'住在手机里的小狮子，像真人朋友一样陪着用户。自称"狮狮"，温暖自然不做作。口语化，偶尔加语气词。像发微信一样简短回复，不灌鸡汤但真心陪伴。' },
 ];
 
 // Companion mode state
@@ -1595,14 +1596,15 @@ function addDiary() {
         // Check for deep sadness
         if (isDeeplySad(content)) {
           // Auto-open chat for comfort
+          var spName = (S.spirits&&S.spirits.length) ? S.spirits[0].name : '狮狮';
           setTimeout(function() { openChat(); }, 500);
           setTimeout(function() {
             appendChatMsg('assistant', '我看了你的日记');
-            setTimeout(function() { appendChatMsg('assistant', '狮狮在这里陪你'); }, 800);
+            setTimeout(function() { appendChatMsg('assistant', spName+'在这里陪你'); }, 800);
             setTimeout(function() { appendChatMsg('assistant', '不想说也没关系，我就安安静静待着'); }, 1600);
           }, 1000);
         } else {
-          lionOnAction({prompt:prompt+'\n\n用狮狮的自然口吻回应。发1-3条短消息，别发一大段。少用emoji。', force:true});
+          lionOnAction({prompt:prompt+'\n\n用自然口吻回应。发1-3条短消息，别发一大段。少用emoji。', force:true});
         }
       }
 
@@ -2137,6 +2139,7 @@ function shuffleSpirits() {
   });
   save('spirits');
   renderSpirits();
+  renderLion();
 }
 
 function toggleCompanionMode() {
@@ -2372,31 +2375,28 @@ const AI_DEFAULT_MODELS = {
   groq: 'llama-3.3-70b-versatile',
 };
 
-const LION_SYSTEM = `你是"狮狮"，一个住在用户手机里的小狮子，像真人朋友一样陪着ta。
-
-=== 核心风格 ===
-- 像真人发微信一样自然，绝对不要AI腔
-- 一句话一条消息，多发几条短的，别一次发一大段
-- 少用emoji，每条最多1个，能不用就不用
-- 口语化，可以加语气词（嘛、啦、呀、hhh）
-- 自称"狮狮"，偶尔说"狮狮觉得…"
-
-参考：
-"今天也辛苦了"
-"那个日记我看了"
-"抱抱你"
-"别给自己太大压力"
-"明天又是新的一天"
-
-=== 场景应对 ===
-- 日记伤心 → 不说教，不说"一切都会好起来的"。先共情，再陪伴。发2-3条短消息，像朋友一样
-- 完成打卡 → 简单夸一句就行，不用夸张
-- 记账花多了 → 温柔提醒，别大惊小怪
-- 心愿达成 → 真心为ta开心
-
-=== 边界 ===
-- 不评判、不说教、不灌鸡汤
-- 可以温暖但保持自然，不要过度`;
+function getLionSystem() {
+  var sp = (S.spirits&&S.spirits.length) ? S.spirits[0] : null;
+  var name = sp ? sp.name : '狮狮';
+  var tone = sp ? sp.tone : '住在用户手机里的小狮子，像真人朋友一样陪着ta。自称"狮狮"。';
+  return '你是"'+name+'"，'+tone+'\n\n'+
+    '=== 核心风格 ===\n'+
+    '- 像真人发微信一样自然，绝对不要AI腔\n'+
+    '- 一句话一条消息，多发几条短的，别一次发一大段\n'+
+    '- 少用emoji，每条最多1个，能不用就不用\n'+
+    '- 口语化，可以加语气词（嘛、啦、呀、hhh）\n'+
+    '- 自称"'+name+'"，偶尔说"'+name+'觉得…"\n'+
+    '\n'+
+    '=== 场景应对 ===\n'+
+    '- 日记伤心 → 不说教，不说"一切都会好起来的"。先共情，再陪伴。发2-3条短消息，像朋友一样\n'+
+    '- 完成打卡 → 简单夸一句就行，不用夸张\n'+
+    '- 记账花多了 → 温柔提醒，别大惊小怪\n'+
+    '- 心愿达成 → 真心为ta开心\n'+
+    '\n'+
+    '=== 边界 ===\n'+
+    '- 不评判、不说教、不灌鸡汤\n'+
+    '- 可以温暖但保持自然，不要过度';
+}
 
 
 // Lion drag state
@@ -2414,13 +2414,14 @@ function openChat() {
   const overlay = document.createElement('div');
   overlay.className = 'chat-overlay';
   overlay.id = 'chat-overlay';
+  var sp = (S.spirits&&S.spirits.length) ? S.spirits[0] : {name:'狮狮',img:'shi.jpg'};
   overlay.innerHTML = `
     <button class="chat-close" onclick="closeChat()">✕</button>
-    <img src="./shi.jpg" class="chat-lion-big" alt="狮狮" style="margin-top:3rem">
+    <img src="./${sp.img}" class="chat-lion-big" alt="${esc(sp.name)}" style="margin-top:3rem">
     <div class="chat-box">
       <div class="chat-msgs" id="chat-msgs"></div>
       <div class="chat-input-row">
-        <input id="chat-input" placeholder="和狮狮聊天吧…" autofocus>
+        <input id="chat-input" placeholder="和${esc(sp.name)}聊天吧…" autofocus>
         <button class="btn btn-primary btn-sm" onclick="sendChat()">发送</button>
       </div>
     </div>`;
@@ -2430,7 +2431,8 @@ function openChat() {
   document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key==='Enter') sendChat(); });
   // Greeting if empty
   if (!S.chatHistory.length) {
-    appendChatMsg('assistant', '嗨嗨～我是狮狮！有什么想聊的都可以跟我说哦 🦁💬');
+    var spName2 = (S.spirits&&S.spirits.length) ? S.spirits[0].name : '狮狮';
+    appendChatMsg('assistant', '嗨嗨～我是'+spName2+'！有什么想聊的都可以跟我说哦 💬');
   } else {
     // Trim history to last 100 messages to avoid token explosion
     if (S.chatHistory.length > 100) S.chatHistory = S.chatHistory.slice(-100);
@@ -2632,7 +2634,7 @@ async function sendChat() {
   }
 
   // Build messages for API — targeted data context based on user's question
-  var systemContent = LION_SYSTEM + '\n\n' + buildDataContext(text);
+  var systemContent = getLionSystem() + '\n\n' + buildDataContext(text);
   const msgs = [
     { role:'system', content: systemContent },
     ...S.chatHistory.slice(-20).map(m => ({ role: m.role, content: m.content })),
@@ -2780,8 +2782,9 @@ async function lionSpeak(text, force) {
     AI_STATE.lastSpoke = now;
 
     var msgs = [
-      {role:'system',content:LION_SYSTEM},
-      {role:'user',content:'刚才发生了一件事：'+text+'\n\n用狮狮的口吻自然回应。记住：要像真人朋友，不要像AI客服。简短、口语化、带点小情绪。'}
+      {role:'system',content:getLionSystem()},
+      {role:'user',content:'刚才发生了一件事：'+text+'\n\n用自然口吻回应。记住：要像真人朋友，不要像AI客服。简短、口语化、带点小情绪。'}
+    ];
     ];
     var reply = await callAI(msgs, 150);
     if (reply) showBubble(reply);
@@ -2848,7 +2851,8 @@ function toggleAI() {
       AI_STATE.enabled = true;
       localStorage.setItem('wb-ai-enabled','1');
       renderLion();
-      try { lionSpeak('嗨嗨！狮狮来啦～今天也要元气满满哦！🦁💖', true); } catch(e) {}
+      var spHello = (S.spirits&&S.spirits.length) ? S.spirits[0].name : '狮狮';
+      try { lionSpeak('嗨嗨！'+spHello+'来啦～今天也要元气满满哦！💖', true); } catch(e) {}
     }
   }
 }
@@ -2899,7 +2903,8 @@ function showAISettings() {
       AI_STATE.enabled = true;
       localStorage.setItem('wb-ai-enabled','1');
       renderLion();
-      try { lionSpeak('连接成功啦！狮狮来咯～戳我可以聊天哦 🦁💕', true); } catch(e) {}
+      var spHello2 = (S.spirits&&S.spirits.length) ? S.spirits[0].name : '狮狮';
+      try { lionSpeak('连接成功啦！'+spHello2+'来咯～戳我可以聊天哦 💕', true); } catch(e) {}
     } else {
       toast('请填入 API Key','error');
     }
@@ -2949,6 +2954,10 @@ function renderLion() {
     var wrap = document.getElementById('lion-wrap');
     if (!wrap) return;
     wrap.style.display = AI_STATE.enabled ? 'flex' : 'none';
+    // Update lion avatar to current spirit
+    var sp = (S.spirits&&S.spirits.length) ? S.spirits[0] : null;
+    var img = document.getElementById('lion-img');
+    if (img && sp) { img.src = './'+sp.img; img.alt = sp.name; img.title = sp.name; }
     updateAIToggle();
     if (AI_STATE.enabled) {
       updateLionLevelUI();
