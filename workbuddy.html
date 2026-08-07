@@ -497,7 +497,7 @@ function readFiles(fileList) {
 function fileInputHTML(id, accept, multiple, label) {
   var acc = accept || 'image/*';
   var mult = multiple ? ' multiple' : '';
-  return '<input type="file" id="'+id+'" accept="'+acc+'"'+mult+' style="font-size:16px;padding:.5rem 0;width:100%;min-height:44px">';
+  return '<input type="file" id="'+id+'" accept="'+acc+'"'+mult+' style="font-size:16px;padding:.75rem .5rem;width:100%;min-height:48px;display:block;border:2px dashed var(--border);border-radius:.5rem;background:var(--hover)">';
 }
 
 // Helper: get images array from a record (backward compat: image string → images array)
