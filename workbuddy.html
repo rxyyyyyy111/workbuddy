@@ -240,7 +240,6 @@ tailwind.config = {
     display: flex; flex-direction: column;
     align-items: center; animation: fadeIn .3s ease-out;
     -webkit-overflow-scrolling: touch;
-    transition: padding-bottom .25s ease;
   }
   .chat-lion-big {
     width: 100px; height: 100px; border-radius: 50%; object-fit: cover;
@@ -2432,32 +2431,15 @@ function openChat() {
   var chatInput = document.getElementById('chat-input');
   chatInput.addEventListener('keydown', e => { if (e.key==='Enter') sendChat(); });
 
-  // Keyboard-aware: lift chat when keyboard opens on mobile
-  function adjustForKeyboard() {
-    var ov = document.getElementById('chat-overlay');
+  // Simple: lift chat box 40% when keyboard opens
+  chatInput.addEventListener('focus', function() {
     var box = document.getElementById('chat-box-el');
-    if (!ov || !box) return;
-    // Small delay to let keyboard settle
-    setTimeout(function() {
-      var activeEl = document.activeElement;
-      if (!activeEl || (activeEl.id !== 'chat-input')) return;
-      if (window.visualViewport) {
-        var vh = window.visualViewport.height;
-        var offsetTop = window.visualViewport.offsetTop || 0;
-        if (offsetTop > 50) {
-          ov.style.paddingBottom = (window.innerHeight - vh) + 'px';
-        } else {
-          ov.style.paddingBottom = '';
-        }
-      }
-      // Scroll input into view
-      activeEl.scrollIntoView({block: 'center', behavior: 'smooth'});
-    }, 300);
-  }
-  chatInput.addEventListener('focus', adjustForKeyboard);
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', adjustForKeyboard);
-  }
+    if (box) { box.style.transform = 'translateY(-40vh)'; box.style.transition = 'transform .3s ease'; }
+  });
+  chatInput.addEventListener('blur', function() {
+    var box = document.getElementById('chat-box-el');
+    if (box) box.style.transform = '';
+  });
 
   // Greeting if empty
   if (!S.chatHistory.length) {
