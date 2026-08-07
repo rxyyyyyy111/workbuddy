@@ -443,6 +443,10 @@ const S = {
   // Spirit companions
   spirits: safeParse(localStorage.getItem("wb-spirits"), '[]'),
   spiritMemories: safeParse(localStorage.getItem("wb-spiritMemories"), '[]'),
+
+  // AI daily summary
+  aiSummary: safeParse(localStorage.getItem("wb-aiSummary"), '{"text":"","generatedAt":""}'),
+  lastSummaryTime: localStorage.getItem('wb-lastSummaryTime')||'',
 };
 
 // Spirit character pool (5 image-based characters)
@@ -726,6 +730,142 @@ function renderCal() {
     </div>
   </div>`;
   if (S.selDate) pickDate(S.selDate);
+
+  // AI Summary card
+  panel.innerHTML += renderAISummary();
+}
+
+// ==================== AI DAILY SUMMARY ====================
+function collectNewData() {
+  var since = S.lastSummaryTime || '';
+  var today = fmt(new Date());
+  var sinceDate = since ? since.slice(0,10) : '';
+
+  var newDiaries = S.diaries.filter(function(d){ return d.date >= sinceDate; });
+  var newTasks = S.tasks.filter(function(t){ return t.createdAt >= sinceDate; });
+  var newCheckins = [];
+  S.tasks.forEach(function(t){
+    (t.checkins||[]).forEach(function(c){
+      if (c.date >= sinceDate) newCheckins.push({task:t.name, date:c.date, text:c.text||''});
+    });
+  });
+  var newTxs = S.transactions.filter(function(t){ return t.date >= sinceDate; });
+  var newWishMsgs = [];
+  S.wishes.forEach(function(w){
+    (w.messages||[]).forEach(function(m){
+      if (m.date >= sinceDate) newWishMsgs.push({wish:w.name, date:m.date, text:m.text||''});
+    });
+  });
+  var newClues = [];
+  S.archives.forEach(function(a){
+    (a.clues||[]).forEach(function(c){
+      if ((c.time||'').slice(0,10) >= sinceDate) newClues.push({archive:a.name, time:c.time, text:(c.text||'').slice(0,80)});
+    });
+  });
+
+  // Check if anything is new
+  var hasNew = newDiaries.length || newTasks.length || newCheckins.length || newTxs.length || newWishMsgs.length || newClues.length;
+  if (!hasNew) return null;
+
+  // Build compact data
+  var ctx = '过去24小时新增记录：\n';
+  if (newDiaries.length) {
+    ctx += '📔 日记'+newDiaries.length+'篇：';
+    newDiaries.forEach(function(d){
+      ctx += '['+d.mood+'] '+(d.title||'无标题');
+      if (d.content) ctx += ' — '+(d.content||'').slice(0,80);
+      ctx += '；';
+    });
+    ctx += '\n';
+  }
+  if (newTasks.length) {
+    ctx += '✅ 新建任务：'+newTasks.map(function(t){return t.name;}).join('、')+'\n';
+  }
+  if (newCheckins.length) {
+    ctx += '🔥 打卡'+newCheckins.length+'次：';
+    newCheckins.forEach(function(c){
+      ctx += c.task;
+      if (c.text) ctx += '（'+c.text.slice(0,40)+'）';
+      ctx += '；';
+    });
+    ctx += '\n';
+  }
+  if (newTxs.length) {
+    var inc = newTxs.filter(function(t){return t.type==='income';}).reduce(function(s,t){return s+t.amount;},0);
+    var exp = newTxs.filter(function(t){return t.type==='expense';}).reduce(function(s,t){return s+t.amount;},0);
+    var cats = {};
+    newTxs.filter(function(t){return t.type==='expense';}).forEach(function(t){
+      cats[t.category] = (cats[t.category]||0) + t.amount;
+    });
+    ctx += '💰 记账：收入¥'+inc.toFixed(0)+' 支出¥'+exp.toFixed(0);
+    var topCats = Object.entries(cats).sort(function(a,b){return b[1]-a[1];}).slice(0,3);
+    if (topCats.length) ctx += ' 主要支出：'+topCats.map(function(c){return c[0]+'¥'+c[1].toFixed(0);}).join('、');
+    ctx += '\n';
+  }
+  if (newWishMsgs.length) {
+    ctx += '🌟 心愿留言'+newWishMsgs.length+'条\n';
+  }
+  if (newClues.length) {
+    ctx += '📁 新增线索'+newClues.length+'条：';
+    newClues.forEach(function(c){ ctx += c.archive+' — '+c.text+'；'; });
+    ctx += '\n';
+  }
+
+  return ctx;
+}
+
+async function generateAISummary(force) {
+  if (!AI_STATE.enabled || !AI_STATE.apiKey) return;
+  var dataCtx = collectNewData();
+  if (!dataCtx) {
+    if (force) {
+      S.aiSummary = {text:'近24小时无新增记录', generatedAt: new Date().toISOString()};
+      save('aiSummary');
+    }
+    return;
+  }
+
+  var msgs = [
+    {role:'system', content:'你是用户的数据助手。根据过去24小时的新增记录，给出简洁的观察和提醒（≤300字）。非必要不多说。格式：纯文字、不用emoji、不用markdown。可关注：情绪变化、消费提醒、目标进度、饮食健康。如果没有值得提醒的内容，一句话带过即可。'},
+    {role:'user', content: dataCtx}
+  ];
+
+  var reply = await callAI(msgs, 300);
+  if (reply) {
+    S.aiSummary = {text: reply, generatedAt: new Date().toISOString()};
+    save('aiSummary');
+    S.lastSummaryTime = new Date().toISOString();
+    localStorage.setItem('wb-lastSummaryTime', S.lastSummaryTime);
+  }
+}
+
+function renderAISummary() {
+  var sum = S.aiSummary;
+  var html = '<div class="card p-4 slide-up mt-4">'+
+    '<div class="flex items-center justify-between mb-2">'+
+      '<h3 class="font-bold text-sm">🤖 AI 每日总结</h3>'+
+      '<div class="flex items-center gap-2">'+
+        (sum&&sum.generatedAt?'<span class="text-xs" style="color:var(--sub)">'+sum.generatedAt.slice(0,16).replace('T',' ')+'</span>':'')+
+        '<button class="btn btn-xs" style="font-size:.65rem;padding:.15rem .5rem;background:var(--hover);color:var(--sub);border:none;cursor:pointer" onclick="refreshAISummary()">🔄 刷新</button>'+
+      '</div>'+
+    '</div>'+
+    '<div id="ai-summary-content" class="text-sm" style="line-height:1.6;white-space:pre-wrap">';
+  if (!AI_STATE.enabled || !AI_STATE.apiKey) {
+    html += '<span style="color:var(--sub)">请先配置 AI API Key</span>';
+  } else if (sum && sum.text) {
+    html += esc(sum.text);
+  } else {
+    html += '<span style="color:var(--sub)">点击刷新生成首次总结</span>';
+  }
+  html += '</div></div>';
+  return html;
+}
+
+async function refreshAISummary() {
+  var el = document.getElementById('ai-summary-content');
+  if (el) el.innerHTML = '<span style="color:var(--sub)">AI 正在总结...</span>';
+  await generateAISummary(true);
+  renderCal();
 }
 
 // Helper: next occurrence of an anniversary date
@@ -3450,6 +3590,19 @@ function boot() {
     // Ensure spirits & warehouse cats initialized before any rendering
     ensureSpirits();
     ensureWHCats();
+
+    // Initialize lastSummaryTime if never set
+    if (!S.lastSummaryTime) {
+      S.lastSummaryTime = new Date(Date.now()-86400000).toISOString(); // 24h ago
+      localStorage.setItem('wb-lastSummaryTime', S.lastSummaryTime);
+    }
+
+    // Auto-refresh AI summary if past midnight since last summary
+    var lastDate = S.lastSummaryTime.slice(0,10);
+    var today = fmt(new Date());
+    if (lastDate < today) {
+      setTimeout(function(){ generateAISummary(true).then(function(){ renderCal(); }); }, 2000);
+    }
     document.documentElement.classList.toggle('dark', S.theme==='dark');
     updateThemeBtn();
     buildNav();
