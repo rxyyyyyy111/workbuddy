@@ -2780,15 +2780,13 @@ function initLionDrag() {
   }
 
   function onUp(e) {
+    var wasShortTap = !isDragging && longPressTimer !== null;
     cancelLongPress();
     if (isDragging) {
       wrap.classList.remove('dragging');
       localStorage.setItem('wb-lion-pos', JSON.stringify({ bottom: parseInt(wrap.style.bottom)||16, right: parseInt(wrap.style.right)||16 }));
       isDragging = false;
-    } else if (!longPressTimer) {
-      // Already handled
-    } else {
-      // Short tap — toggle menu
+    } else if (wasShortTap) {
       toggleLionMenu();
     }
   }
