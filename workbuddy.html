@@ -1471,23 +1471,27 @@ function renderDiary() {
       <button class="btn btn-primary btn-sm" onclick="addDiary()">+ 写日记</button>
     </div>
     <div class="card p-3 mb-4">
-      <div class="flex gap-2 flex-wrap items-end">
-        <div class="flex-1 min-w-[120px]">
-          <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">🔍 搜索关键词</label>
-          <input class="input" type="search" id="diary-search" placeholder="搜索标题或内容..." value="${esc(filterKeyword)}" autocomplete="off"
-            oninput="window._diaryFilter=this.value;renderDiary()">
+      <div class="space-y-2">
+        <div class="flex gap-2 items-end">
+          <div class="flex-1">
+            <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">🔍 搜索关键词</label>
+            <input class="input" type="search" id="diary-search" placeholder="搜索标题或内容..." value="${esc(filterKeyword)}" autocomplete="off"
+              oninput="window._diaryFilter=this.value;renderDiary()">
+          </div>
+          ${hasFilter?`<button class="btn btn-ghost btn-sm flex-shrink-0" onclick="event.stopPropagation();window._diaryFilter='';window._diaryDateFrom='';window._diaryDateTo='';renderDiary()">✕ 清除筛选</button>`:''}
         </div>
-        <div>
-          <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">开始日期</label>
-          <input class="input" type="date" id="diary-date-from" value="${filterDateFrom}" style="width:130px"
-            onchange="window._diaryDateFrom=this.value;renderDiary()">
+        <div class="flex gap-2 items-end">
+          <div class="flex-1">
+            <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">开始日期</label>
+            <input class="input" type="date" id="diary-date-from" value="${filterDateFrom}"
+              onchange="window._diaryDateFrom=this.value;renderDiary()">
+          </div>
+          <div class="flex-1">
+            <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">结束日期</label>
+            <input class="input" type="date" id="diary-date-to" value="${filterDateTo}"
+              onchange="window._diaryDateTo=this.value;renderDiary()">
+          </div>
         </div>
-        <div>
-          <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">结束日期</label>
-          <input class="input" type="date" id="diary-date-to" value="${filterDateTo}" style="width:130px"
-            onchange="window._diaryDateTo=this.value;renderDiary()">
-        </div>
-        ${hasFilter?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();window._diaryFilter='';window._diaryDateFrom='';window._diaryDateTo='';renderDiary()" style="align-self:flex-end">✕ 清除筛选</button>`:''}
       </div>
       ${resultInfo}
     </div>
