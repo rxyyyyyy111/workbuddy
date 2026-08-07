@@ -289,9 +289,15 @@ tailwind.config = {
   .chat-close:hover { background: #fff; transform: scale(1.1); }
   .dark .chat-close { background: rgba(40,40,40,.9); color: #ddd; }
 
-  /* Draggable lion */
-  #lion-wrap.dragging { transition: none; }
-  #lion-wrap.dragging .lion-avatar { transform: scale(1.15); }
+  /* Draggable lion — smooth when dragged, pulse when ready */
+  #lion-wrap { transition: none; }
+  #lion-wrap.dragging { cursor: grabbing; }
+  #lion-wrap.dragging .lion-avatar { transform: scale(1.15); filter: drop-shadow(0 6px 14px rgba(0,0,0,.2)); }
+  @keyframes pulseReady {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  #lion-wrap.press-ready .lion-avatar { animation: pulseReady .6s ease-in-out infinite; }
 </style>
 </head>
 <body class="min-h-screen">
@@ -2673,44 +2679,82 @@ function initLionDrag() {
     wrap.style.top = lionSavedPos.y + 'px';
   }
 
-  wrap.addEventListener('pointerdown', function(e) {
-    if (e.target.closest('#lion-menu') || e.target.closest('.lion-bubble') || e.target.closest('button')) return;
-    lionDrag.active = true;
-    lionDrag.moved = false;
-    lionDrag.startX = e.clientX;
-    lionDrag.startY = e.clientY;
-    var rect = wrap.getBoundingClientRect();
-    lionDrag.origX = rect.left;
-    lionDrag.origY = rect.top;
-    wrap.classList.add('dragging');
-    e.preventDefault();
-  });
+  var longPressTimer = null;
+  var readyTimer = null;
+  var isDragging = false;
+  var startX, startY, origX, origY;
 
-  document.addEventListener('pointermove', function(e) {
-    if (!lionDrag.active) return;
-    var dx = e.clientX - lionDrag.startX;
-    var dy = e.clientY - lionDrag.startY;
-    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) lionDrag.moved = true;
-    if (!lionDrag.moved) return;
+  function cancelLongPress() {
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    if (readyTimer) { clearTimeout(readyTimer); readyTimer = null; }
+    wrap.classList.remove('press-ready');
+  }
+
+  function onDown(e) {
+    if (e.target.closest('#lion-menu') || e.target.closest('.lion-bubble') || e.target.closest('button')) return;
+    cancelLongPress();
+    isDragging = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    var rect = wrap.getBoundingClientRect();
+    origX = rect.left;
+    origY = rect.top;
+
+    // Visual feedback after 1.5s
+    readyTimer = setTimeout(function() {
+      readyTimer = null;
+      wrap.classList.add('press-ready');
+    }, 1500);
+
+    // Long press 2s to enter drag mode
+    longPressTimer = setTimeout(function() {
+      longPressTimer = null;
+      wrap.classList.remove('press-ready');
+      isDragging = true;
+      wrap.classList.add('dragging');
+      if (navigator.vibrate) navigator.vibrate(15);
+    }, 2000);
+    e.preventDefault();
+  }
+
+  function onMove(e) {
+    if (longPressTimer) {
+      // Cancel long press if finger moves too much
+      var dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) cancelLongPress();
+      return;
+    }
+    if (!isDragging) return;
+    var dx = e.clientX - startX;
+    var dy = e.clientY - startY;
     wrap.style.right = 'auto';
     wrap.style.bottom = 'auto';
-    var nx = Math.max(0, Math.min(window.innerWidth - 80, lionDrag.origX + dx));
-    var ny = Math.max(0, Math.min(window.innerHeight - 80, lionDrag.origY + dy));
+    var nx = Math.max(0, Math.min(window.innerWidth - 80, origX + dx));
+    var ny = Math.max(0, Math.min(window.innerHeight - 80, origY + dy));
     wrap.style.left = nx + 'px';
     wrap.style.top = ny + 'px';
-  });
+  }
 
-  document.addEventListener('pointerup', function(e) {
-    if (!lionDrag.active) return;
-    wrap.classList.remove('dragging');
-    if (lionDrag.moved) {
+  function onUp(e) {
+    cancelLongPress();
+    if (isDragging) {
+      wrap.classList.remove('dragging');
       var rect = wrap.getBoundingClientRect();
       localStorage.setItem('wb-lion-pos', JSON.stringify({ x: rect.left, y: rect.top }));
+      isDragging = false;
+    } else if (!longPressTimer) {
+      // Already handled
     } else {
+      // Short tap — toggle menu
       toggleLionMenu();
     }
-    lionDrag.active = false;
-  });
+  }
+
+  wrap.addEventListener('pointerdown', onDown);
+  document.addEventListener('pointermove', onMove);
+  document.addEventListener('pointerup', onUp);
+  document.addEventListener('pointercancel', onUp);
 }
 
 function setLionLevel(lvl) {
