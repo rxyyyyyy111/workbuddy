@@ -1003,7 +1003,7 @@ function addCheckin(taskId) {
       task.checkins.push({id:cid, date, text, images:imgs});
       save('tasks'); renderTaskDetail(); toast('打卡成功 🔥');
       // Auto-trigger spirit comments
-      setTimeout(function(){ autoSpiritComment('checkin_'+cid, '打卡 · '+date, text||''); }, 1500);
+      if (S.companionMode) setTimeout(function(){ autoSpiritComment('checkin_'+cid, '打卡 · '+date, text||''); }, 1500);
     };
 
     readFiles(fi.files).then(saveIt);
@@ -1608,7 +1608,7 @@ function addDiary() {
 
       // Auto-trigger spirit comments
       var diaryId = S.diaries[S.diaries.length-1].id;
-      setTimeout(function(){ autoSpiritComment('diary_'+diaryId, title, content); }, 1500);
+      if (S.companionMode) setTimeout(function(){ autoSpiritComment('diary_'+diaryId, title, content); }, 1500);
     };
 
     readFiles(fi.files).then(saveIt);
