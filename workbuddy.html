@@ -240,6 +240,7 @@ tailwind.config = {
     display: flex; flex-direction: column;
     align-items: center; animation: fadeIn .3s ease-out;
     -webkit-overflow-scrolling: touch;
+    transition: padding-bottom .25s ease;
   }
   .chat-lion-big {
     width: 100px; height: 100px; border-radius: 50%; object-fit: cover;
@@ -316,7 +317,7 @@ tailwind.config = {
 <!-- ==================== SIDEBAR (Desktop) ==================== -->
 <aside id="sidebar" class="flex flex-col fixed left-0 top-0 h-full z-50 transition-all p-2 lg:p-4" style="background:var(--card);border-right:1px solid var(--border);width:3.5rem;overflow-x:hidden;">
   <div class="flex items-center gap-2 px-1 lg:px-2 mb-4 lg:mb-6 mt-1 flex-shrink-0">
-    <div class="w-7 h-7 lg:w-8 lg:h-8 rounded-lg lg:rounded-xl flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0" style="background:var(--accent);">W</div>
+    <img src="./图标.png" class="w-7 h-7 lg:w-8 lg:h-8 rounded-lg lg:rounded-xl flex-shrink-0" style="object-fit:cover" alt="WorkBuddy">
     <span class="font-bold text-base lg:text-lg whitespace-nowrap opacity-0 transition-opacity" style="color:var(--text)" id="sidebar-brand">WorkBuddy</span>
   </div>
   <nav class="flex flex-col gap-0.5 lg:gap-1 flex-1 overflow-y-auto" id="nav-desktop"></nav>
@@ -2428,28 +2429,34 @@ function openChat() {
   document.body.appendChild(overlay);
 
   renderChatHistory();
-  document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key==='Enter') sendChat(); });
+  var chatInput = document.getElementById('chat-input');
+  chatInput.addEventListener('keydown', e => { if (e.key==='Enter') sendChat(); });
 
-  // Keyboard-aware: adjust chat box when keyboard opens on mobile
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', function() {
-      var ov = document.getElementById('chat-overlay');
-      if (!ov) return;
-      var vh = window.visualViewport.height;
-      var diff = window.innerHeight - vh;
-      if (diff > 100) {
-        // Keyboard is open — push chat up
-        ov.style.paddingBottom = diff + 'px';
-        ov.style.justifyContent = 'flex-start';
-        var box = document.getElementById('chat-box-el');
-        if (box) box.style.maxHeight = (vh - 160) + 'px';
-      } else {
-        ov.style.paddingBottom = '';
-        ov.style.justifyContent = '';
-        var box2 = document.getElementById('chat-box-el');
-        if (box2) box2.style.maxHeight = '';
+  // Keyboard-aware: lift chat when keyboard opens on mobile
+  function adjustForKeyboard() {
+    var ov = document.getElementById('chat-overlay');
+    var box = document.getElementById('chat-box-el');
+    if (!ov || !box) return;
+    // Small delay to let keyboard settle
+    setTimeout(function() {
+      var activeEl = document.activeElement;
+      if (!activeEl || (activeEl.id !== 'chat-input')) return;
+      if (window.visualViewport) {
+        var vh = window.visualViewport.height;
+        var offsetTop = window.visualViewport.offsetTop || 0;
+        if (offsetTop > 50) {
+          ov.style.paddingBottom = (window.innerHeight - vh) + 'px';
+        } else {
+          ov.style.paddingBottom = '';
+        }
       }
-    });
+      // Scroll input into view
+      activeEl.scrollIntoView({block: 'center', behavior: 'smooth'});
+    }, 300);
+  }
+  chatInput.addEventListener('focus', adjustForKeyboard);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', adjustForKeyboard);
   }
 
   // Greeting if empty
