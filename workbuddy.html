@@ -2166,23 +2166,25 @@ function renderSpirits() {
   var memCount = (S.spiritMemories||[]).length;
 
   // Current spirit card
+  var isMysterious = cur.personality === '神秘';
   var curCard = '<div class="card p-5 slide-up text-center mb-4" style="border:2px solid '+cur.color+'">'+
     '<img src="./'+cur.img+'" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto" alt="'+esc(cur.name)+'">'+
     '<div class="font-bold text-lg mt-2">'+esc(cur.name)+'</div>'+
-    '<div class="text-xs mt-0.5 px-3 py-0.5 rounded-full inline-block" style="background:'+cur.color+'20;color:'+cur.color+'">'+cur.personality+'</div>'+
-    '<div class="text-xs mt-2" style="color:var(--sub)">'+esc(cur.tone)+'</div>'+
+    (isMysterious ? '<div class="text-xs mt-1" style="color:var(--sub)">???</div>' : '<div class="text-xs mt-0.5 px-3 py-0.5 rounded-full inline-block" style="background:'+cur.color+'20;color:'+cur.color+'">'+cur.personality+'</div>')+
+    (isMysterious ? '' : '<div class="text-xs mt-2" style="color:var(--sub)">'+esc(cur.tone)+'</div>')+
     '<div class="text-xs mt-1" style="color:var(--sub)">💭 '+memCount+' 条记忆</div>'+
   '</div>';
 
-  // Gallery: all 6 spirits
+  // Gallery: all 4 spirits
   var gallery = '<h4 class="font-bold text-sm mb-3">📖 精灵图鉴</h4><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">';
   SPIRIT_POOL.forEach(function(p, i){
     var pName = p.img.replace(/\.(png|jpg|jpeg|gif|webp)$/i,'');
     var isActive = cur.name === pName;
+    var isMyst = p.personality === '神秘';
     gallery += '<div class="card p-3 text-center slide-up" style="'+(isActive?'border:2px solid '+cur.color+';background:'+cur.color+'10':'')+'">'+
       '<img src="./'+p.img+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover;margin:0 auto" alt="'+esc(pName)+'">'+
       '<div class="text-xs font-bold mt-1">'+esc(pName)+'</div>'+
-      '<div class="text-xs px-2 py-0.5 rounded-full inline-block mt-0.5" style="font-size:.6rem;background:'+p.color+'20;color:'+p.color+'">'+p.personality+'</div>'+
+      (isMyst ? '<div class="text-xs mt-0.5" style="color:var(--sub)">???</div>' : '<div class="text-xs px-2 py-0.5 rounded-full inline-block mt-0.5" style="font-size:.6rem;background:'+p.color+'20;color:'+p.color+'">'+p.personality+'</div>')+
       (isActive
         ? '<div class="text-xs mt-1 font-bold" style="color:'+cur.color+'">⭐ 当前精灵</div>'
         : '<button class="btn btn-xs mt-1" style="font-size:.6rem;padding:.15rem .5rem;background:var(--accent);color:#fff;border:none;cursor:pointer" onclick="switchSpirit('+i+')">🔄 切换</button>'
