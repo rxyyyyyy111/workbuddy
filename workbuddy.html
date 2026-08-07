@@ -2822,7 +2822,6 @@ async function lionSpeak(text, force) {
       {role:'system',content:getLionSystem()},
       {role:'user',content:'刚才发生了一件事：'+text+'\n\n用自然口吻回应。记住：要像真人朋友，不要像AI客服。简短、口语化、带点小情绪。'}
     ];
-    ];
     var reply = await callAI(msgs, 150);
     if (reply) showBubble(reply);
     else showBubble(text);
