@@ -424,6 +424,7 @@ const S = {
 
   // Warehouse
   warehouseItems: safeParse(localStorage.getItem("wb-warehouseItems"), '[]'),
+  warehouseCats: safeParse(localStorage.getItem("wb-warehouseCats"), '[]'),
   warehouseSubCats: safeParse(localStorage.getItem("wb-warehouseSubCats"), '{"衣柜":[],"化妆品":[],"护肤品":[],"食品":[],"工具":[]}'),
   whCat: null,    // which main category is open (null = list)
   whSub: '全部',  // active sub-category filter
@@ -721,7 +722,7 @@ function buildExpiryWarning() {
   html += '</div>';
   html += '<div class="flex gap-1.5 flex-wrap mt-1.5">';
   warnings.forEach(function(w){
-    var icon = WH_ICONS[w.item.mainCat]||'📦';
+    var icon = getWHIcon(w.item.mainCat);
     var cls = w.days<=0?'expiry-danger':'expiry-warn';
     var txt = w.days<=0?'已过期':w.days+'天后';
     html += '<span class="'+cls+'" style="display:inline-flex;align-items:center;gap:3px;font-size:.68rem;padding:2px 8px;border-radius:2rem;cursor:default">'+icon+' '+esc(w.item.name)+' <b>'+txt+'</b> <span onclick="event.stopPropagation();dismissExpiry(\''+w.item.id+'\')" style="cursor:pointer;opacity:.5;margin-left:2px" title="忽略">✕</span></span>';
@@ -1833,8 +1834,28 @@ function delWish(id) {
 const WH_CATS = ['衣柜','化妆品','护肤品','食品','工具'];
 const WH_ICONS = { '衣柜':'👗', '化妆品':'💄', '护肤品':'🧴', '食品':'🍜', '工具':'🔧' };
 
+// Migrate hardcoded categories to dynamic storage on first load
+function ensureWHCats() {
+  if (!S.warehouseCats || !S.warehouseCats.length) {
+    S.warehouseCats = WH_CATS.map(function(name) {
+      return { id: uid(), name: name, icon: '' };
+    });
+    save('warehouseCats');
+  }
+}
+
+// Get icon HTML for a category: user image or default emoji
+function getWHIcon(catName) {
+  var cat = (S.warehouseCats || []).find(function(c) { return c.name === catName; });
+  if (cat && cat.icon) {
+    return '<img src="' + cat.icon + '" style="width:100%;height:100%;object-fit:cover;border-radius:.5rem" alt="' + esc(catName) + '">';
+  }
+  return WH_ICONS[catName] || '📦';
+}
+
 function renderWH() {
   if (S.whCat) { renderWHDetail(); return; }
+  ensureWHCats();
   const panel = document.getElementById('panel-warehouse');
   const today = fmt(new Date());
 
@@ -1854,36 +1875,46 @@ function renderWH() {
       <div class="font-bold text-sm mb-2">⚠️ 临期/过期提醒</div>
       <div class="space-y-1">${expWarn.map(e => `
         <div class="flex items-center justify-between text-xs p-1.5 rounded-lg ${e.days<=0?'expiry-danger':e.days<=7?'expiry-danger':'expiry-warn'}">
-          <span>${WH_ICONS[e.mainCat]||'📦'} ${esc(e.name)} <span style="opacity:.7">(${e.mainCat})</span></span>
+          <span>${getWHIcon(e.mainCat)} ${esc(e.name)} <span style="opacity:.7">(${e.mainCat})</span></span>
           <span class="font-bold">${e.days<=0?'已过期！':e.days+'天后过期'}</span>
         </div>`).join('')}</div>
     </div>`;
   }
 
-  const catCards = WH_CATS.map(cat => {
-    const items = S.warehouseItems.filter(i=>i.mainCat===cat);
-    const subCats = S.warehouseSubCats[cat]||[];
-    return `<div class="card p-4 slide-up cursor-pointer" onclick="S.whCat='${cat}';S.whSub='全部';renderWH()">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <span class="text-3xl">${WH_ICONS[cat]}</span>
-          <div>
-            <div class="font-bold">${cat}</div>
-            <div class="text-xs" style="color:var(--sub)">${items.length} 件物品 · ${subCats.length} 个分类</div>
-          </div>
-        </div>
-        <span class="text-lg opacity-30">▶</span>
-      </div>
-    </div>`;
+  var catCards = (S.warehouseCats||[]).map(function(cat){
+    var items = S.warehouseItems.filter(function(i){return i.mainCat===cat.name;});
+    var subCats = S.warehouseSubCats[cat.name]||[];
+    var iconHTML = cat.icon
+      ? '<div style="width:48px;height:48px;border-radius:.75rem;overflow:hidden;flex-shrink:0">'+getWHIcon(cat.name)+'</div>'
+      : '<span class="text-3xl flex-shrink-0" style="width:48px;text-align:center">'+getWHIcon(cat.name)+'</span>';
+    return '<div class="card p-4 slide-up" style="position:relative">'+
+      '<div class="flex items-center justify-between cursor-pointer" onclick="S.whCat=\''+esc(cat.name)+'\';S.whSub=\'全部\';renderWH()">'+
+        '<div class="flex items-center gap-3">'+
+          iconHTML+
+          '<div>'+
+            '<div class="font-bold">'+esc(cat.name)+'</div>'+
+            '<div class="text-xs" style="color:var(--sub)">'+items.length+' 件物品 · '+subCats.length+' 个分类</div>'+
+          '</div>'+
+        '</div>'+
+        '<span class="text-lg opacity-30">▶</span>'+
+      '</div>'+
+      '<div class="flex gap-1 mt-2" style="position:relative;z-index:1">'+
+        '<button class="btn btn-xs" style="font-size:.65rem;padding:.15rem .5rem;background:var(--hover);color:var(--sub);border:none;cursor:pointer" onclick="event.stopPropagation();editWHCat(\''+cat.id+'\')">✏️ 编辑</button>'+
+        '<button class="btn btn-xs" style="font-size:.65rem;padding:.15rem .5rem;background:#fee2e2;color:#dc2626;border:none;cursor:pointer" onclick="event.stopPropagation();delWHCat(\''+cat.id+'\')">✕ 删除</button>'+
+      '</div>'+
+    '</div>';
   }).join('');
 
-  panel.innerHTML = `<div class="slide-up">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="font-bold text-lg">🏠 仓库</h3>
-    </div>
-    ${warnHTML}
-    <div class="space-y-3">${catCards}</div>
-  </div>`;
+  if (!catCards) catCards = '<p class="text-center py-12 slide-up" style="color:var(--sub)">还没有分类，创建一个开始整理吧 📦</p>';
+
+  panel.innerHTML = '<div class="slide-up">'+
+    '<div class="flex items-center justify-between mb-4">'+
+      '<h3 class="font-bold text-lg">🏠 仓库</h3>'+
+      '<button class="btn btn-primary btn-sm" onclick="addWHCat()">+ 新建分类</button>'+
+    '</div>'+
+    warnHTML+
+    '<div class="space-y-3">'+catCards+'</div>'+
+  '</div>';
 }
 
 function renderWHDetail() {
@@ -1908,7 +1939,7 @@ function renderWHDetail() {
     return `<div class="wh-item" onclick="viewWHItem('${item.id}')">
       ${getImages(item).length
         ? `<img src="${getImages(item)[0]}" class="wh-thumb" alt="${esc(item.name)}">`
-        : `<div class="wh-thumb">${WH_ICONS[cat]||'📦'}</div>`}
+        : `<div class="wh-thumb">${getWHIcon(cat)}</div>`}
       <div class="text-xs font-medium mt-1.5 truncate">${esc(item.name)}</div>
       <div class="text-xs" style="color:var(--sub)">${esc(item.subCat||'')}</div>
       ${isExp?`<div class="text-xs mt-0.5 px-1.5 py-0.5 rounded-full ${isExpired?'expiry-danger':'expiry-warn'}" style="font-size:.65rem">${isExpired?'已过期':'临期'}</div>`:''}
@@ -1919,15 +1950,15 @@ function renderWHDetail() {
   panel.innerHTML = `<div class="slide-up space-y-4">
     <div class="flex items-center gap-2 flex-wrap">
       <button class="btn btn-ghost btn-sm" onclick="S.whCat=null;S.whSub='全部';renderWH()">◀ 返回</button>
-      <span class="font-bold text-lg">${WH_ICONS[cat]} ${cat}</span>
+      <span class="font-bold text-lg">${getWHIcon(cat)} ${cat}</span>
       <span class="text-xs" style="color:var(--sub)">${allItems.length}件</span>
     </div>
     ${catExp.length?`<div class="card p-3 slide-up" style="border-left:4px solid var(--red)"><div class="text-xs font-bold mb-1" style="color:var(--red)">⚠️ ${catExp.length} 件物品即将过期</div></div>`:''}
     <div class="flex items-center justify-between flex-wrap gap-2">
       <div class="flex gap-1.5 flex-wrap overflow-x-auto pb-1" style="max-width:100%">${pills}</div>
       <div class="flex gap-1 flex-shrink-0">
-        <button class="btn btn-ghost btn-xs" onclick="addWHSubCat('${cat}')">+ 分类</button>
-        <button class="btn btn-primary btn-sm" onclick="addWHItem('${cat}')">+ 添加物品</button>
+        <button class="btn btn-ghost btn-xs" onclick="manageSubCats('${esc(cat)}')">📂 管理子分类</button>
+        <button class="btn btn-primary btn-sm" onclick="addWHItem('${esc(cat)}')">+ 添加物品</button>
       </div>
     </div>
     <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2.5">${grid}</div>
@@ -1938,7 +1969,7 @@ function viewWHItem(id) {
   const item = S.warehouseItems.find(x=>x.id===id);
   if (!item) return;
   const cat = item.mainCat;
-  modal(`${WH_ICONS[cat]||'📦'} ${esc(item.name)}`, `
+  modal(`${getWHIcon(cat)} ${esc(item.name)}`, `
     <div class="space-y-3">
       ${renderImageHTML(getImages(item), 180)}
       <div class="grid grid-cols-2 gap-2 text-sm">
@@ -2000,6 +2031,176 @@ function delWHItem(id) {
   if (!confirm('确定删除这个物品吗？')) return;
   S.warehouseItems = S.warehouseItems.filter(x=>x.id!==id);
   save('warehouseItems'); renderWHDetail(); toast('已删除');
+}
+
+// Manage sub-categories: list, add, rename, delete
+function manageSubCats(cat) {
+  var subs = S.warehouseSubCats[cat]||[];
+  var html = subs.map(function(s, i){
+    return '<div class="flex items-center justify-between p-2 rounded-lg" style="background:var(--hover)">'+
+      '<span class="text-sm">'+esc(s)+'</span>'+
+      '<div class="flex gap-1">'+
+        '<button class="btn btn-xs" style="font-size:.65rem;padding:.15rem .5rem;background:var(--hover);color:var(--sub);border:none;cursor:pointer" onclick="renameSubCat(\''+esc(cat)+'\',\''+esc(s)+'\')">✏️</button>'+
+        '<button class="btn btn-xs" style="font-size:.65rem;padding:.15rem .5rem;background:#fee2e2;color:#dc2626;border:none;cursor:pointer" onclick="delSubCat(\''+esc(cat)+'\',\''+esc(s)+'\')">✕</button>'+
+      '</div>'+
+    '</div>';
+  }).join('') || '<p class="text-sm py-4 text-center" style="color:var(--sub)">暂无子分类</p>';
+
+  modal('📂 管理子分类 · '+esc(cat),
+    '<div class="space-y-2 max-h-64 overflow-y-auto">'+html+'</div>'+
+    '<div class="flex gap-1.5 mt-3">'+
+      '<input class="input flex-1" id="new-sub-name" placeholder="新子分类名称" style="font-size:.8rem">'+
+      '<button class="btn btn-primary btn-sm" onclick="addSubCatInline(\''+esc(cat)+'\')">添加</button>'+
+    '</div>',
+    function(){}, true
+  );
+  document.getElementById('modal-save').textContent = '关闭';
+  document.getElementById('modal-save').onclick = closeModal;
+}
+
+function addSubCatInline(cat) {
+  var input = document.getElementById('new-sub-name');
+  if (!input) return;
+  var name = input.value.trim();
+  if (!name) return;
+  if (!S.warehouseSubCats[cat]) S.warehouseSubCats[cat] = [];
+  if (S.warehouseSubCats[cat].indexOf(name)!==-1) { toast('子分类已存在','info'); return; }
+  S.warehouseSubCats[cat].push(name);
+  save('warehouseSubCats');
+  closeModal();
+  manageSubCats(cat);
+  renderWHDetail();
+  toast('子分类已添加 📁');
+}
+
+function renameSubCat(cat, oldName) {
+  var newName = prompt('重命名子分类「'+oldName+'」：', oldName);
+  if (!newName || !newName.trim() || newName.trim()===oldName) return;
+  var cn = newName.trim();
+  var subs = S.warehouseSubCats[cat]||[];
+  var idx = subs.indexOf(oldName);
+  if (idx===-1) return;
+  if (subs.indexOf(cn)!==-1) { toast('子分类已存在','info'); return; }
+  subs[idx] = cn;
+  // Update all items using this sub-category
+  S.warehouseItems.forEach(function(item){
+    if (item.mainCat===cat && item.subCat===oldName) item.subCat = cn;
+  });
+  save('warehouseSubCats'); save('warehouseItems');
+  closeModal();
+  manageSubCats(cat);
+  renderWHDetail();
+  toast('子分类已重命名 ✏️');
+}
+
+function delSubCat(cat, subName) {
+  if (!confirm('确定删除子分类「'+subName+'」吗？\n\n该分类下的物品不会被删除，但子分类会变为空。')) return;
+  S.warehouseSubCats[cat] = (S.warehouseSubCats[cat]||[]).filter(function(s){return s!==subName;});
+  // Clear subCat on items using this sub-category
+  S.warehouseItems.forEach(function(item){
+    if (item.mainCat===cat && item.subCat===subName) item.subCat = '';
+  });
+  save('warehouseSubCats'); save('warehouseItems');
+  closeModal();
+  manageSubCats(cat);
+  renderWHDetail();
+  toast('子分类已删除');
+}
+
+// Create a new main category
+function addWHCat() {
+  window._whCatIcon = '';
+  modal('新建分类',
+    '<div class="space-y-3">'+
+      '<input class="input" id="whcat-name" placeholder="分类名称 *" autofocus>'+
+      '<div>'+
+        '<label class="text-xs font-medium mb-1 block" style="color:var(--sub)">分类图标（可选，上传图片）</label>'+
+        '<input type="file" accept="image/*" id="whcat-icon" class="text-xs" style="width:100%">'+
+        '<div id="whcat-icon-preview" class="mt-2" style="display:none"></div>'+
+      '</div>'+
+    '</div>',
+    function(){
+      var nameEl = document.getElementById('whcat-name');
+      if (!nameEl) return;
+      var name = nameEl.value.trim();
+      if (!name) { toast('名称不能为空','error'); return; }
+      if ((S.warehouseCats||[]).some(function(c){return c.name===name;})) { toast('分类已存在','info'); return; }
+      var fi = document.getElementById('whcat-icon');
+      var saveIt = function(imgs){
+        var icon = imgs && imgs.length ? imgs[0] : '';
+        S.warehouseCats.push({id:uid(), name:name, icon:icon});
+        if (!S.warehouseSubCats[name]) S.warehouseSubCats[name] = [];
+        save('warehouseCats'); save('warehouseSubCats');
+        renderWH();
+        toast('分类已创建 📁');
+      };
+      readFiles(fi.files).then(saveIt);
+    }, true
+  );
+}
+
+// Edit an existing main category
+function editWHCat(catId) {
+  var cat = (S.warehouseCats||[]).find(function(c){return c.id===catId;});
+  if (!cat) return;
+  window._whCatIcon = cat.icon||'';
+  var previewHTML = cat.icon ? '<img src="'+cat.icon+'" style="width:80px;height:80px;object-fit:cover;border-radius:.75rem">' : '';
+  modal('编辑分类',
+    '<div class="space-y-3">'+
+      '<input class="input" id="whcat-name" placeholder="分类名称 *" value="'+esc(cat.name)+'" autofocus>'+
+      '<div>'+
+        '<label class="text-xs font-medium mb-1 block" style="color:var(--sub)">分类图标（可选）</label>'+
+        '<input type="file" accept="image/*" id="whcat-icon" class="text-xs" style="width:100%">'+
+        (previewHTML ? '<div id="whcat-icon-preview" class="mt-2">'+previewHTML+'</div>' : '<div id="whcat-icon-preview" class="mt-2" style="display:none"></div>')+
+      '</div>'+
+    '</div>',
+    function(){
+      var nameEl = document.getElementById('whcat-name');
+      if (!nameEl) return;
+      var newName = nameEl.value.trim();
+      if (!newName) { toast('名称不能为空','error'); return; }
+      var oldName = cat.name;
+      // Check duplicate (exclude self)
+      if ((S.warehouseCats||[]).some(function(c){return c.name===newName && c.id!==catId;})) { toast('分类已存在','info'); return; }
+      var fi = document.getElementById('whcat-icon');
+      var saveIt = function(imgs){
+        var newIcon = (imgs && imgs.length) ? imgs[0] : cat.icon;
+        // Rename: update all items + subCats key
+        if (newName !== oldName) {
+          S.warehouseItems.forEach(function(item){
+            if (item.mainCat===oldName) item.mainCat = newName;
+          });
+          if (S.warehouseSubCats[oldName]) {
+            S.warehouseSubCats[newName] = S.warehouseSubCats[oldName];
+            delete S.warehouseSubCats[oldName];
+          }
+          cat.name = newName;
+        }
+        cat.icon = newIcon;
+        save('warehouseCats'); save('warehouseItems'); save('warehouseSubCats');
+        renderWH();
+        toast('分类已更新 ✏️');
+      };
+      readFiles(fi.files).then(saveIt);
+    }, true
+  );
+}
+
+// Delete a main category and all its items
+function delWHCat(catId) {
+  var cat = (S.warehouseCats||[]).find(function(c){return c.id===catId;});
+  if (!cat) return;
+  var itemCount = S.warehouseItems.filter(function(i){return i.mainCat===cat.name;}).length;
+  var msg = '确定删除分类「'+cat.name+'」吗？';
+  if (itemCount) msg += '\n\n该分类下的 '+itemCount+' 件物品也将被一并删除。';
+  if (!confirm(msg)) return;
+  S.warehouseCats = (S.warehouseCats||[]).filter(function(c){return c.id!==catId;});
+  S.warehouseItems = S.warehouseItems.filter(function(i){return i.mainCat!==cat.name;});
+  delete S.warehouseSubCats[cat.name];
+  if (S.whCat===cat.name) { S.whCat = null; S.whSub = '全部'; }
+  save('warehouseCats'); save('warehouseItems'); save('warehouseSubCats');
+  renderWH();
+  toast('分类已删除');
 }
 
 // ==================== 9. PASSWORD VAULT ====================
@@ -3206,8 +3407,9 @@ function importData() {
 // ==================== BOOT ====================
 function boot() {
   try {
-    // Ensure spirits initialized before any rendering
+    // Ensure spirits & warehouse cats initialized before any rendering
     ensureSpirits();
+    ensureWHCats();
     document.documentElement.classList.toggle('dark', S.theme==='dark');
     updateThemeBtn();
     buildNav();
