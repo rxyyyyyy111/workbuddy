@@ -2151,35 +2151,66 @@ function toggleCompanionMode() {
 function renderSpirits() {
   ensureSpirits();
   var panel = document.getElementById('panel-spirits');
-
   var isOn = S.companionMode;
+  var cur = S.spirits[0];
+  var memCount = (S.spiritMemories[cur.id]||[]).length;
 
-  var cards = S.spirits.map(function(s){
-    var memCount = (S.spiritMemories[s.id]||[]).length;
-    return '<div class="card p-4 slide-up text-center" style="border-top:3px solid '+s.color+'">'+
-      '<img src="./'+s.img+'" style="width:80px;height:80px;border-radius:50%;object-fit:cover;margin:0 auto" alt="'+esc(s.name)+'">'+
-      '<div class="font-bold text-sm mt-2">'+esc(s.name)+'</div>'+
-      '<div class="text-xs mt-0.5 px-3 py-0.5 rounded-full inline-block" style="background:'+s.color+'20;color:'+s.color+'">'+s.personality+'</div>'+
-      '<div class="text-xs mt-2" style="color:var(--sub)">'+esc(s.tone)+'</div>'+
-      '<div class="text-xs mt-1" style="color:var(--sub)">💭 '+memCount+' 条记忆</div>'+
+  // Current spirit card
+  var curCard = '<div class="card p-5 slide-up text-center mb-4" style="border:2px solid '+cur.color+'">'+
+    '<img src="./'+cur.img+'" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto" alt="'+esc(cur.name)+'">'+
+    '<div class="font-bold text-lg mt-2">'+esc(cur.name)+'</div>'+
+    '<div class="text-xs mt-0.5 px-3 py-0.5 rounded-full inline-block" style="background:'+cur.color+'20;color:'+cur.color+'">'+cur.personality+'</div>'+
+    '<div class="text-xs mt-2" style="color:var(--sub)">'+esc(cur.tone)+'</div>'+
+    '<div class="text-xs mt-1" style="color:var(--sub)">💭 '+memCount+' 条记忆</div>'+
+  '</div>';
+
+  // Gallery: all 6 spirits
+  var gallery = '<h4 class="font-bold text-sm mb-3">📖 精灵图鉴</h4><div class="grid grid-cols-2 sm:grid-cols-3 gap-2">';
+  SPIRIT_POOL.forEach(function(p, i){
+    var pName = p.img.replace(/\.(png|jpg|jpeg|gif|webp)$/i,'');
+    var isActive = cur.name === pName;
+    gallery += '<div class="card p-3 text-center slide-up" style="'+(isActive?'border:2px solid '+cur.color+';background:'+cur.color+'10':'')+'">'+
+      '<img src="./'+p.img+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover;margin:0 auto" alt="'+esc(pName)+'">'+
+      '<div class="text-xs font-bold mt-1">'+esc(pName)+'</div>'+
+      '<div class="text-xs px-2 py-0.5 rounded-full inline-block mt-0.5" style="font-size:.6rem;background:'+p.color+'20;color:'+p.color+'">'+p.personality+'</div>'+
+      (isActive
+        ? '<div class="text-xs mt-1 font-bold" style="color:'+cur.color+'">⭐ 当前精灵</div>'
+        : '<button class="btn btn-xs mt-1" style="font-size:.6rem;padding:.15rem .5rem;background:var(--accent);color:#fff;border:none;cursor:pointer" onclick="switchSpirit('+i+')">🔄 切换</button>'
+      )+
     '</div>';
-  }).join('');
+  });
+  gallery += '</div>';
 
   panel.innerHTML = '<div class="slide-up">'+
     '<div class="flex items-center justify-between mb-4">'+
       '<h3 class="font-bold text-lg">🧚 我的精灵</h3>'+
       '<div class="flex gap-2">'+
         '<button class="btn btn-sm" style="background:'+(isOn?'var(--accent)':'var(--hover)')+';color:'+(isOn?'#fff':'var(--sub)')+';border:none;font-size:.75rem" onclick="toggleCompanionMode()">'+(isOn?'🟢 陪伴中':'⏸ 已封存')+'</button>'+
-        '<button class="btn btn-ghost btn-sm" onclick="if(confirm(\'随机换一个精灵？当前精灵的记忆将被清空。\')){shuffleSpirits();toast(\'新精灵来了！🧚\')}">🎲 换一个</button>'+
+        '<button class="btn btn-ghost btn-sm" onclick="if(confirm(\'随机换一个精灵？当前精灵的记忆将被清空。\')){shuffleSpirits();toast(\'新精灵来了！🧚\')}">🎲 随机</button>'+
       '</div>'+
     '</div>'+
-    '<p class="text-sm mb-3" style="color:var(--sub)">'+(isOn?'陪伴模式已开启：精灵会在日记和打卡中主动评论你。':'陪伴模式已封存：精灵暂时休眠，不会评论。')+'</p>'+
-    '<div class="flex justify-center mb-4"><div style="max-width:280px;width:100%">'+cards+'</div></div>'+
-    '<div class="card p-4">'+
-      '<h4 class="font-bold text-sm mb-2">💬 精灵互动说明</h4>'+
-      '<p class="text-sm" style="color:var(--sub)">写完日记后，精灵会自动评论你的内容。你也可以在日记详情和打卡记录下方主动和精灵聊天。精灵的性格和记忆会持续累积。</p>'+
-    '</div>'+
+    '<p class="text-sm mb-3" style="color:var(--sub)">'+(isOn?'陪伴模式已开启：精灵会在日记和打卡中主动评论你。右下角浮动头像同步为当前精灵。':'陪伴模式已封存：精灵暂时休眠，不会评论。')+'</p>'+
+    curCard+
+    gallery+
   '</div>';
+}
+
+function switchSpirit(poolIndex) {
+  var p = SPIRIT_POOL[poolIndex];
+  if (!p) return;
+  var name = p.img.replace(/\.(png|jpg|jpeg|gif|webp)$/i,'');
+  // Keep existing memory if switching back to same name
+  var existing = S.spirits.find(function(s){return s.name===name;});
+  if (existing) {
+    S.spirits = [existing];
+  } else {
+    // New spirit: clear old and create new
+    S.spirits = [{id:uid(), name:name, personality:p.personality, img:p.img, color:p.color, tone:p.tone}];
+  }
+  save('spirits');
+  renderSpirits();
+  renderLion();
+  toast('已切换至 '+name+' 🧚');
 }
 
 // Render spirit comment section for a diary or checkin
@@ -2882,19 +2913,16 @@ function showAISettings() {
       <div><label class="text-xs font-medium mb-1 block" style="color:var(--sub)">API Key</label>
         <input class="input" type="password" id="ai-key" value="${esc(AI_STATE.apiKey)}" placeholder="sk-..." autofocus>
       </div>
-      <div><label class="text-xs font-medium mb-1 block" style="color:var(--sub)">Model</label>
-        <input class="input" id="ai-model" value="${esc(AI_STATE.model||AI_DEFAULT_MODELS[AI_STATE.provider]||'')}" placeholder="留空自动选择">
-      </div>
       <div class="text-xs p-2 rounded-lg" style="background:var(--hover);color:var(--sub)">
-        💡 Key 仅存本地浏览器，不上传任何服务器。AI 调用直接从你的浏览器发送到对应 API。
+        💡 Key 仅存本地浏览器，不上传任何服务器。AI 调用直接从你的浏览器发送到对应 API。模型自动匹配服务商。
       </div>
     </div>`, () => {
     AI_STATE.provider = document.getElementById('ai-provider').value;
     AI_STATE.apiKey = document.getElementById('ai-key').value.trim();
-    AI_STATE.model = document.getElementById('ai-model').value.trim()||'';
+    AI_STATE.model = ''; // auto-detect
     localStorage.setItem('wb-ai-provider', AI_STATE.provider);
     localStorage.setItem('wb-ai-key', AI_STATE.apiKey);
-    localStorage.setItem('wb-ai-model', AI_STATE.model);
+    localStorage.setItem('wb-ai-model', '');
     if (AI_STATE.provider==='custom') {
       AI_ENDPOINTS.custom = document.getElementById('ai-endpoint').value.trim();
       localStorage.setItem('wb-ai-endpoint', AI_ENDPOINTS.custom);
