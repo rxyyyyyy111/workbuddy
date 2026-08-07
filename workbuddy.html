@@ -473,53 +473,20 @@ function uid() { return Date.now().toString(36)+Math.random().toString(36).slice
 function fmt(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function esc(s) { const el=document.createElement('div'); el.textContent=s; return el.innerHTML; }
 
-// Compress image: resize to max 1200px, JPEG quality 0.7, before base64 encoding
-function compressImage(file) {
-  return new Promise(function(resolve) {
-    // Only compress images > 200KB, and only JPEG/PNG/WebP
-    if (file.size < 200*1024) {
-      var r = new FileReader();
-      r.onload = function() { resolve(r.result); };
-      r.onerror = function() { resolve(''); };
-      r.readAsDataURL(file);
-      return;
-    }
-    var img = new Image();
-    var url = URL.createObjectURL(file);
-    img.onload = function() {
-      URL.revokeObjectURL(url);
-      var maxW = 1200, maxH = 1200;
-      var w = img.width, h = img.height;
-      if (w <= maxW && h <= maxH) {
-        // Already small enough, just read
-        var r = new FileReader();
-        r.onload = function() { resolve(r.result); };
-        r.onerror = function() { resolve(''); };
-        r.readAsDataURL(file);
-        return;
-      }
-      // Scale down
-      if (w > h) { h = Math.round(h * maxW / w); w = maxW; }
-      else { w = Math.round(w * maxH / h); h = maxH; }
-      var canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      var ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
-    };
-    img.onerror = function() {
-      URL.revokeObjectURL(url);
-      resolve('');
-    };
-    img.src = url;
-  });
-}
-
-// Helper: read multiple files as compressed base64 data URLs
+// Helper: read multiple files as base64 data URLs
 function readFiles(fileList) {
   if (!fileList||!fileList.length) return Promise.resolve([]);
   return Promise.all(Array.from(fileList).map(function(file) {
-    return compressImage(file).catch(function() { return ''; });
+    return new Promise(function(resolve) {
+      var r = new FileReader();
+      r.onload = function() { resolve(r.result); };
+      r.onerror = function() {
+        console.error('FileReader error for:', file.name);
+        toast('图片 "'+file.name+'" 读取失败', 'error');
+        resolve('');
+      };
+      r.readAsDataURL(file);
+    });
   })).then(function(arr) { return arr.filter(Boolean); });
 }
 
@@ -619,7 +586,25 @@ function modal(title, bodyHTML, onSave, wide) {
         <button class="btn btn-primary btn-sm" id="modal-save">保存</button>
       </div>
     </div></div>`;
-  document.getElementById('modal-save').onclick = () => { onSave(); closeModal(); };
+  var saveBtn = document.getElementById('modal-save');
+  saveBtn.onclick = function() {
+    saveBtn.disabled = true;
+    saveBtn.textContent = '保存中...';
+    var result = onSave();
+    // If onSave returns a Promise, wait for it before closing
+    if (result && typeof result.then === 'function') {
+      result.then(function() {
+        closeModal();
+      }).catch(function(e) {
+        console.error('Save error:', e);
+        toast('保存失败，请重试', 'error');
+        saveBtn.disabled = false;
+        saveBtn.textContent = '保存';
+      });
+    } else {
+      closeModal();
+    }
+  };
 }
 function closeModal() { document.getElementById('modal-container').innerHTML=''; }
 
@@ -1009,7 +994,7 @@ function addTask() {
       r.readAsDataURL(file);
     });
 
-    Promise.all([
+    return Promise.all([
       readFiles(imgFiles),
       vidFile?readFile(vidFile):Promise.resolve('')
     ]).then(([imgs,vid])=>createTask(imgs,vid));
@@ -1093,7 +1078,7 @@ function addCheckin(taskId) {
       save('tasks'); renderTaskDetail(); toast('打卡成功 🔥');
     };
 
-    readFiles(fi.files).then(saveIt);
+    return readFiles(fi.files).then(saveIt);
   });
 }
 
@@ -1440,7 +1425,7 @@ function addClue() {
       arc.clues.push({id:uid(), time, text, images:imgs});
       save('archives'); renderArcDetail(); toast('线索已添加 ✨');
     };
-    readFiles(fi.files).then(saveIt);
+    return readFiles(fi.files).then(saveIt);
   });
 }
 function delClue(clueId) {
@@ -1696,7 +1681,7 @@ function addDiary() {
 
     };
 
-    readFiles(fi.files).then(saveIt);
+    return readFiles(fi.files).then(saveIt);
   }, true);
 }
 
@@ -2063,7 +2048,7 @@ function addWHItem(cat) {
       images:[]
     };
     const saveIt = (imgs) => { data.images=imgs; S.warehouseItems.push(data); save('warehouseItems'); renderWHDetail(); toast('已添加 ✅'); };
-    readFiles(fi.files).then(saveIt);
+    return readFiles(fi.files).then(saveIt);
   }, true);
 }
 
@@ -2184,7 +2169,7 @@ function addWHCat() {
         renderWH();
         toast('分类已创建 📁');
       };
-      readFiles(fi.files).then(saveIt);
+      return readFiles(fi.files).then(saveIt);
     }, true
   );
 }
@@ -2231,7 +2216,7 @@ function editWHCat(catId) {
         renderWH();
         toast('分类已更新 ✏️');
       };
-      readFiles(fi.files).then(saveIt);
+      return readFiles(fi.files).then(saveIt);
     }, true
   );
 }
