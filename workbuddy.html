@@ -351,7 +351,7 @@ tailwind.config = {
     <button onclick="openChat()">💬 发起对话</button>
     <button onclick="closeLionMenu();showAISettings()">⚙️ 修改API</button>
   </div>
-  <img id="lion-img" class="lion-avatar lion-bobbing" src="./shi.jpg" alt="狮狮" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
+  <img id="lion-img" class="lion-avatar lion-bobbing" src="狮狮.jpg" alt="狮狮" style="width:72px;height:72px;border-radius:50%;object-fit:cover;">
 </div>
 
 <script>
@@ -413,7 +413,7 @@ const S = {
 // Spirit character pool (5 image-based characters)
 const SPIRIT_POOL = [
   { personality:'可爱懒散', img:'花生酱.png', color:'#f97316', tone:'一只软乎乎的小橘猫，懒洋洋的，爱撒娇。自称"酱酱"，说话软软的，但偶尔也会傲娇。"唔…好困…但是可以陪你一会儿啦～"' },
-  { personality:'神秘', img:'shi.jpg', color:'#ec4899', tone:'住在手机里的小狮子，性格毒舌搞怪又邪恶可爱。自称"狮狮"，嘴上不饶人但其实超宠用户。"哼，才不是为了你才醒着的！"' },
+  { personality:'神秘', img:'狮狮.jpg', color:'#ec4899', tone:'住在手机里的小狮子，性格毒舌搞怪又邪恶可爱。自称"狮狮"，嘴上不饶人但其实超宠用户。"哼，才不是为了你才醒着的！"' },
   { personality:'活泼搞怪', img:'蛋小黄.png', color:'#fbbf24', tone:'一颗圆滚滚的蛋黄，元气满满！自称"蛋蛋"，爱用感叹号，说话跳脱，永远在蹦跶。"哇！！！好棒好棒！！"' },
   { personality:'腹黑邪恶', img:'邪恶大耳狗.png', color:'#a78bfa', tone:'表面笑嘻嘻的大耳朵狗，自称"本汪"，心里门儿清。偶尔冒出让人后背发凉的吐槽。"（微笑）你确定要这样吗？"' },
 ];
@@ -2430,7 +2430,7 @@ function openChat() {
   const overlay = document.createElement('div');
   overlay.className = 'chat-overlay';
   overlay.id = 'chat-overlay';
-  var sp = (S.spirits&&S.spirits.length) ? S.spirits[0] : {name:'狮狮',img:'shi.jpg'};
+  var sp = (S.spirits&&S.spirits.length) ? S.spirits[0] : {name:'狮狮',img:'狮狮.jpg'};
   overlay.innerHTML = `
     <button class="chat-close" onclick="closeChat()">✕</button>
     <img src="./${sp.img}" class="chat-lion-big" alt="${esc(sp.name)}" style="margin-top:3rem">
