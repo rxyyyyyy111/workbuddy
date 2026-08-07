@@ -1939,7 +1939,7 @@ function renderPwd() {
           <div class="font-semibold text-sm">🔐 ${esc(p.name||'未命名')}</div>
           <div class="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
             <span style="color:var(--sub)">👤 ${esc(p.account||'—')}</span>
-            <span class="pwd-display" onclick="togglePwdShow('${id}')" title="点击切换显示/隐藏密码" style="cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;background:var(--hover);transition:background .15s">
+            <span class="pwd-display" id="pwd-disp-${id}" onclick="togglePwdShow('${id}')" title="点击切换显示/隐藏密码" style="cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;background:var(--hover);transition:background .15s">
               <span style="font-family:monospace;letter-spacing:1px;color:${isShown?'var(--accent)':'var(--sub)'}">${isShown?esc(p.password||''):dots}</span>
               <span style="font-size:.8rem">${isShown?'🙈':'👁'}</span>
             </span>
@@ -2007,7 +2007,15 @@ function delPwd(id) {
 
 function togglePwdShow(id) {
   window['_pwdShow_'+id] = !window['_pwdShow_'+id];
-  renderPwd();
+  var isShown = window['_pwdShow_'+id];
+  var el = document.getElementById('pwd-disp-'+id);
+  if (!el) return;
+  var p = S.passwords.find(function(x){return x.id===id;});
+  if (!p) return;
+  var dots = '•'.repeat(Math.min(16, (p.password||'').length));
+  el.innerHTML = '<span style="font-family:monospace;letter-spacing:1px;color:'+(isShown?'var(--accent)':'var(--sub)')+'">'
+    + (isShown?esc(p.password||''):dots)
+    + '</span><span style="font-size:.8rem">'+(isShown?'🙈':'👁')+'</span>';
 }
 
 // Robust clipboard with fallback for all contexts
