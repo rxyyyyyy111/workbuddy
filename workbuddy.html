@@ -228,8 +228,8 @@ tailwind.config = {
     .nav-item span { font-size: 1.1rem; }
   }
   @media (min-width: 1024px) {
-    #sidebar { width: 14rem !important; }
-    main { margin-left: 14rem !important; }
+    #sidebar { width: 3.5rem !important; }
+    main { margin-left: 3.5rem !important; }
   }
 
   /* Chat overlay */
@@ -297,12 +297,13 @@ tailwind.config = {
 <body class="min-h-screen">
 
 <!-- ==================== SIDEBAR (Desktop) ==================== -->
-<aside id="sidebar" class="flex flex-col fixed left-0 top-0 h-full z-50 transition-all p-2 lg:p-4" style="background:var(--card);border-right:1px solid var(--border);width:3.5rem;overflow-x:hidden;" onmouseenter="expandSidebar()" onmouseleave="collapseSidebar()">
+<aside id="sidebar" class="flex flex-col fixed left-0 top-0 h-full z-50 transition-all p-2 lg:p-4" style="background:var(--card);border-right:1px solid var(--border);width:3.5rem;overflow-x:hidden;">
   <div class="flex items-center gap-2 px-1 lg:px-2 mb-4 lg:mb-6 mt-1 flex-shrink-0">
     <div class="w-7 h-7 lg:w-8 lg:h-8 rounded-lg lg:rounded-xl flex items-center justify-center text-white font-bold text-xs lg:text-sm flex-shrink-0" style="background:var(--accent);">W</div>
-    <span class="font-bold text-base lg:text-lg whitespace-nowrap opacity-0 lg:opacity-100 transition-opacity" style="color:var(--text)" id="sidebar-brand">WorkBuddy</span>
+    <span class="font-bold text-base lg:text-lg whitespace-nowrap opacity-0 transition-opacity" style="color:var(--text)" id="sidebar-brand">WorkBuddy</span>
   </div>
   <nav class="flex flex-col gap-0.5 lg:gap-1 flex-1 overflow-y-auto" id="nav-desktop"></nav>
+  <button onclick="showDataIO()" class="flex items-center justify-center p-2 rounded-xl transition-all flex-shrink-0 text-sm mb-1" style="background:transparent;color:var(--text);border:1.5px solid var(--border);cursor:pointer;font-family:inherit" title="数据导入导出">📦</button>
   <button onclick="toggleTheme()" class="flex items-center justify-center lg:justify-start gap-2 p-2 rounded-xl transition-all flex-shrink-0 text-sm" style="background:transparent;color:var(--text);border:1.5px solid var(--border);cursor:pointer;font-family:inherit" id="theme-btn-desktop"></button>
 </aside>
 
@@ -399,6 +400,34 @@ function uid() { return Date.now().toString(36)+Math.random().toString(36).slice
 function fmt(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function esc(s) { const el=document.createElement('div'); el.textContent=s; return el.innerHTML; }
 
+// Helper: read multiple files as base64 data URLs
+function readFiles(fileList) {
+  if (!fileList||!fileList.length) return Promise.resolve([]);
+  return Promise.all(Array.from(fileList).map(file => new Promise(resolve => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => resolve('');
+    r.readAsDataURL(file);
+  }))).then(arr => arr.filter(Boolean));
+}
+
+// Helper: get images array from a record (backward compat: image string → images array)
+function getImages(record) {
+  if (record.images && record.images.length) return record.images;
+  if (record.image) return [record.image];
+  return [];
+}
+
+// Helper: render image thumbnails HTML
+function renderImageHTML(images, maxH) {
+  maxH = maxH || 200;
+  if (!images||!images.length) return '';
+  if (images.length===1) {
+    return `<img src="${images[0]}" class="media-thumb mt-2" style="max-width:100%;max-height:${maxH}px" onclick="window.open('${images[0]}')" alt="图片">`;
+  }
+  return `<div class="flex gap-2 flex-wrap mt-2">${images.map((img,i)=>`<img src="${img}" class="media-thumb" style="max-width:120px;max-height:120px;object-fit:cover;cursor:pointer" onclick="window.open('${img}')" alt="图片${i+1}">`).join('')}</div>`;
+}
+
 // ==================== NAVIGATION ====================
 const NAV = [
   { id:'calendar', icon:'📅', label:'日历待办' },
@@ -420,7 +449,7 @@ const SUBS = {
 function buildNav() {
   const d = document.getElementById('nav-desktop');
   d.innerHTML = NAV.map(n => `<div class="nav-item${S.panel===n.id?' active':''}" onclick="go('${n.id}')" data-nav="${n.id}" title="${n.label}">
-    <span class="text-lg flex-shrink-0">${n.icon}</span><span class="hidden lg:inline whitespace-nowrap">${n.label}</span>
+    <span class="text-lg flex-shrink-0">${n.icon}</span>
   </div>`).join('');
 }
 
@@ -446,29 +475,7 @@ function toggleTheme() {
 }
 function updateThemeBtn() {
   const isDark = S.theme==='dark';
-  document.getElementById('theme-btn-desktop').innerHTML = isDark ? '☀️ <span class="hidden lg:inline whitespace-nowrap">浅色模式</span>' : '🌙 <span class="hidden lg:inline whitespace-nowrap">暗黑模式</span>';
-}
-
-// Sidebar toggle on mobile
-let sidebarExpanded = false;
-function toggleSidebar() {
-  if (window.innerWidth >= 1024) return;
-  sidebarExpanded = !sidebarExpanded;
-  const sb = document.getElementById('sidebar');
-  if (sidebarExpanded) {
-    sb.style.width = '13rem';
-    document.getElementById('sidebar-brand').style.opacity = '1';
-    document.querySelectorAll('#nav-desktop .lg\\:inline').forEach(el => el.style.display = 'inline');
-  } else {
-    sb.style.width = '3.5rem';
-    document.getElementById('sidebar-brand').style.opacity = '0';
-    document.querySelectorAll('#nav-desktop .lg\\:inline').forEach(el => el.style.display = '');
-  }
-}
-function expandSidebar() { if (window.innerWidth < 1024 && !sidebarExpanded) toggleSidebar(); }
-function collapseSidebar() {
-  if (window.innerWidth >= 1024) return;
-  setTimeout(function() { if (sidebarExpanded) toggleSidebar(); }, 500);
+  document.getElementById('theme-btn-desktop').innerHTML = isDark ? '☀️' : '🌙';
 }
 
 // ==================== TOAST & MODAL ====================
@@ -632,7 +639,7 @@ function renderTasks() {
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
               <span class="font-semibold text-sm">${esc(t.name)}</span>
-              ${t.image?`<span class="file-pill file-pill-img">🖼 图</span>`:''}
+              ${getImages(t).length?`<span class="file-pill file-pill-img">🖼 图${getImages(t).length>1?' '+getImages(t).length:''}</span>`:''}
               ${t.video?`<span class="file-pill file-pill-vid">🎬 视频</span>`:''}
             </div>
             <div class="flex items-center gap-3 mt-1.5 text-xs" style="color:var(--sub)">
@@ -675,7 +682,7 @@ function renderTaskDetail() {
         <button class="btn btn-danger btn-xs" onclick="delCheckin('${t.id}','${c.id}')">✕</button>
       </div>
       ${c.text?`<p class="text-sm whitespace-pre-wrap">${esc(c.text)}</p>`:''}
-      ${c.image?`<img src="${c.image}" class="media-thumb mt-2 max-w-full max-h-48" onclick="window.open('${c.image}')" alt="打卡图片">`:''}
+      ${renderImageHTML(getImages(c), 180)}
     </div>`).join('');
   if (!checksHTML) checksHTML = '<p class="text-center py-8 text-sm" style="color:var(--sub)">还没有打卡记录，开始第一次打卡吧 💪</p>';
 
@@ -707,11 +714,11 @@ function renderTaskDetail() {
       <div class="text-xs" style="color:var(--sub)">创建于 ${t.createdAt}</div>
     </div>
 
-    ${(t.image||t.video)?`
+    ${(getImages(t).length||t.video)?`
     <div class="card p-4">
       <h4 class="font-semibold text-sm mb-2">📎 附件</h4>
       <div class="flex gap-3 flex-wrap">
-        ${t.image?`<img src="${t.image}" class="media-thumb max-w-full max-h-48" onclick="window.open('${t.image}')" alt="任务图片">`:''}
+        ${renderImageHTML(getImages(t), 180)}
         ${t.video?`<video src="${t.video}" controls class="media-thumb max-w-full" style="max-height:200px"></video>`:''}
       </div>
     </div>`:''}
@@ -751,8 +758,8 @@ function addTask() {
         <button class="btn btn-ghost btn-sm flex-shrink-0" onclick="addCategory()" type="button">+ 新分类</button>
       </div>
       <div>
-        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选）</label>
-        <input type="file" accept="image/*" id="tk-image" class="text-xs" style="width:100%">
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选，支持多选）</label>
+        <input type="file" accept="image/*" id="tk-image" class="text-xs" style="width:100%" multiple>
       </div>
       <div>
         <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">视频（可选）</label>
@@ -762,11 +769,11 @@ function addTask() {
     const name = document.getElementById('tk-name').value.trim();
     if (!name) { toast('名称不能为空','error'); return; }
     const cat = document.getElementById('tk-cat').value;
-    const imgFile = document.getElementById('tk-image').files[0];
+    const imgFiles = document.getElementById('tk-image').files;
     const vidFile = document.getElementById('tk-video').files[0];
 
-    const createTask = (imgData, vidData) => {
-      S.tasks.push({id:uid(), name, category:cat, image:imgData||'', video:vidData||'', createdAt:fmt(new Date()), checkins:[]});
+    const createTask = (imgs, vidData) => {
+      S.tasks.push({id:uid(), name, category:cat, images:imgs, video:vidData||'', createdAt:fmt(new Date()), checkins:[]});
       save('tasks'); renderTasks(); toast('任务已创建 ✅');
     };
 
@@ -775,14 +782,10 @@ function addTask() {
       r.readAsDataURL(file);
     });
 
-    if (imgFile || vidFile) {
-      Promise.all([
-        imgFile?readFile(imgFile):Promise.resolve(''),
-        vidFile?readFile(vidFile):Promise.resolve('')
-      ]).then(([img,vid])=>createTask(img,vid));
-    } else {
-      createTask('','');
-    }
+    Promise.all([
+      readFiles(imgFiles),
+      vidFile?readFile(vidFile):Promise.resolve('')
+    ]).then(([imgs,vid])=>createTask(imgs,vid));
   }, true);
 }
 
@@ -846,8 +849,8 @@ function addCheckin(taskId) {
       <input class="input" type="datetime-local" id="ck-date" value="${ds}">
       <textarea class="input" id="ck-text" placeholder="记录心得、想法..." rows="3" autofocus></textarea>
       <div>
-        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选）</label>
-        <input type="file" accept="image/*" id="ck-image" class="text-xs" style="width:100%">
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选，支持多选）</label>
+        <input type="file" accept="image/*" id="ck-image" class="text-xs" style="width:100%" multiple>
       </div>
     </div>`, () => {
     const text = document.getElementById('ck-text').value.trim();
@@ -856,17 +859,13 @@ function addCheckin(taskId) {
     const task = S.tasks.find(t=>t.id===taskId);
     if (!task) return;
 
-    const saveIt = (img) => {
+    const saveIt = (imgs) => {
       if (!task.checkins) task.checkins = [];
-      task.checkins.push({id:uid(), date, text, image:img||''});
+      task.checkins.push({id:uid(), date, text, images:imgs});
       save('tasks'); renderTaskDetail(); toast('打卡成功 🔥');
     };
 
-    if (fi.files&&fi.files[0]) {
-      const r = new FileReader();
-      r.onload=()=>saveIt(r.result);
-      r.readAsDataURL(fi.files[0]);
-    } else { saveIt(''); }
+    readFiles(fi.files).then(saveIt);
   });
 }
 
@@ -1240,7 +1239,7 @@ function renderArcDetail() {
           <button class="btn btn-danger btn-xs" onclick="delClue('${c.id}')">✕</button>
         </div>
         ${c.text?`<p class="text-sm whitespace-pre-wrap">${esc(c.text)}</p>`:''}
-        ${c.image?`<img src="${c.image}" class="media-thumb mt-2 max-w-full max-h-64" onclick="window.open('${c.image}')" alt="线索图片">`:''}
+        ${renderImageHTML(getImages(c), 220)}
       </div>`).join('');
   }
 
@@ -1288,8 +1287,8 @@ function addClue() {
       <input class="input" type="datetime-local" id="clue-time" value="${ds}">
       <textarea class="input" id="clue-text" placeholder="记录文字..." rows="3" autofocus></textarea>
       <div>
-        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选）</label>
-        <input type="file" accept="image/*" id="clue-image" class="text-xs" style="width:100%">
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选，支持多选）</label>
+        <input type="file" accept="image/*" id="clue-image" class="text-xs" style="width:100%" multiple>
       </div>
     </div>`, () => {
     const text = document.getElementById('clue-text').value.trim();
@@ -1297,15 +1296,11 @@ function addClue() {
     const time = document.getElementById('clue-time').value;
     const arc = S.archives.find(a=>a.id===S.archiveId);
     if (!arc) return;
-    const saveIt = (img) => {
-      arc.clues.push({id:uid(), time, text, image:img||''});
+    const saveIt = (imgs) => {
+      arc.clues.push({id:uid(), time, text, images:imgs});
       save('archives'); renderArcDetail(); toast('线索已添加 ✨');
     };
-    if (fi.files&&fi.files[0]) {
-      const r = new FileReader();
-      r.onload=()=>saveIt(r.result);
-      r.readAsDataURL(fi.files[0]);
-    } else { saveIt(''); }
+    readFiles(fi.files).then(saveIt);
   });
 }
 function delClue(clueId) {
@@ -1324,11 +1319,14 @@ function shareArchive() {
     name: a.name,
     desc: a.desc||'',
     createdAt: a.createdAt,
-    clues: (a.clues||[]).map(c => ({
-      time: c.time||'',
-      text: c.text||'',
-      image: (c.image||'').length < 140000 ? c.image : '', // skip large images
-    })),
+    clues: (a.clues||[]).map(c => {
+      const imgs = getImages(c);
+      return {
+        time: c.time||'',
+        text: c.text||'',
+        images: imgs.filter(img => img.length < 140000), // skip large images
+      };
+    }),
   };
 
   try {
@@ -1375,7 +1373,7 @@ function showSharedArchive(data) {
     <div class="card p-3.5">
       <span class="text-xs font-medium px-2 py-0.5 rounded-full" style="background:var(--accent-light);color:var(--accent)">${c.time||'未记录时间'}</span>
       ${c.text?`<p class="text-sm mt-2 whitespace-pre-wrap">${esc(c.text)}</p>`:''}
-      ${c.image?`<img src="${c.image}" class="media-thumb mt-2 max-w-full max-h-48 rounded-xl" onclick="window.open('${c.image}')" alt="线索图片">`:''}
+      ${renderImageHTML(getImages(c), 180)}
     </div>`).join('') || '<p class="text-sm py-4 text-center" style="color:var(--sub)">暂无线索</p>';
 
   modal(`📂 分享档案：${esc(data.name)}`, `
@@ -1402,7 +1400,23 @@ const MOODS = [
 
 function renderDiary() {
   const panel = document.getElementById('panel-diary');
-  const sorted = [...S.diaries].sort((a,b)=>b.date.localeCompare(a.date));
+
+  // Get filter state
+  const filterKeyword = (window._diaryFilter||'').toLowerCase();
+  const filterDateFrom = window._diaryDateFrom||'';
+  const filterDateTo = window._diaryDateTo||'';
+
+  // Sort newest first, then apply filters
+  let sorted = [...S.diaries].sort((a,b)=>b.date.localeCompare(a.date));
+  if (filterKeyword) {
+    sorted = sorted.filter(d =>
+      (d.title||'').toLowerCase().includes(filterKeyword) ||
+      (d.content||'').toLowerCase().includes(filterKeyword)
+    );
+  }
+  if (filterDateFrom) sorted = sorted.filter(d => d.date >= filterDateFrom);
+  if (filterDateTo) sorted = sorted.filter(d => d.date <= filterDateTo);
+
   const grouped = {};
   sorted.forEach(d => {
     const m = d.date.slice(0,7);
@@ -1415,6 +1429,8 @@ function renderDiary() {
     html += `<div class="mb-2 mt-1"><span class="text-xs font-bold px-3 py-1 rounded-full" style="background:var(--accent-light);color:var(--accent)">📅 ${month}</span></div>`;
     html += entries.map(d => {
       const mood = MOODS.find(m=>m.emoji===d.mood)||{};
+      const hasImg = d.images ? d.images.length > 0 : !!d.image;
+      const imgCount = d.images ? d.images.length : (d.image ? 1 : 0);
       return `<div class="card p-3.5 slide-up cursor-pointer" onclick="viewDiary('${d.id}')">
         <div class="flex items-start justify-between gap-2">
           <div class="flex-1 min-w-0">
@@ -1425,7 +1441,7 @@ function renderDiary() {
             <div class="text-xs mt-1 flex items-center gap-2" style="color:var(--sub)">
               <span>${d.date}</span>
               ${d.content?`<span class="truncate max-w-[200px]">— ${esc(d.content.slice(0,60))}${d.content.length>60?'...':''}</span>`:''}
-              ${d.image?`<span class="file-pill file-pill-img">🖼</span>`:''}
+              ${hasImg?`<span class="file-pill file-pill-img">🖼${imgCount>1?' '+imgCount:''}</span>`:''}
             </div>
           </div>
           <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delDiary('${d.id}')">✕</button>
@@ -1433,12 +1449,40 @@ function renderDiary() {
       </div>`;
     }).join('');
   }
-  if (!sorted.length) html = '<p class="text-center py-12 slide-up" style="color:var(--sub)">还没有日记，写下今天的故事吧 📔</p>';
+  if (!sorted.length) {
+    html = (filterKeyword||filterDateFrom||filterDateTo)
+      ? '<p class="text-center py-12 slide-up" style="color:var(--sub)">没有匹配的日记 🔍</p>'
+      : '<p class="text-center py-12 slide-up" style="color:var(--sub)">还没有日记，写下今天的故事吧 📔</p>';
+  }
+
+  const hasFilter = filterKeyword || filterDateFrom || filterDateTo;
+  const resultInfo = hasFilter ? `<span class="text-xs" style="color:var(--sub)">找到 ${sorted.length} 篇</span>` : '';
 
   panel.innerHTML = `<div class="slide-up">
     <div class="flex items-center justify-between mb-4">
       <h3 class="font-bold text-lg">📔 日记本</h3>
       <button class="btn btn-primary btn-sm" onclick="addDiary()">+ 写日记</button>
+    </div>
+    <div class="card p-3 mb-4">
+      <div class="flex gap-2 flex-wrap items-end">
+        <div class="flex-1 min-w-[120px]">
+          <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">🔍 搜索关键词</label>
+          <input class="input" type="search" id="diary-search" placeholder="搜索标题或内容..." value="${esc(filterKeyword)}" autocomplete="off"
+            oninput="window._diaryFilter=this.value;renderDiary()">
+        </div>
+        <div>
+          <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">开始日期</label>
+          <input class="input" type="date" id="diary-date-from" value="${filterDateFrom}" style="width:130px"
+            onchange="window._diaryDateFrom=this.value;renderDiary()">
+        </div>
+        <div>
+          <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">结束日期</label>
+          <input class="input" type="date" id="diary-date-to" value="${filterDateTo}" style="width:130px"
+            onchange="window._diaryDateTo=this.value;renderDiary()">
+        </div>
+        ${hasFilter?`<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();window._diaryFilter='';window._diaryDateFrom='';window._diaryDateTo='';renderDiary()" style="align-self:flex-end">✕ 清除筛选</button>`:''}
+      </div>
+      ${resultInfo}
     </div>
     <div class="space-y-3">${html}</div>
   </div>`;
@@ -1455,7 +1499,7 @@ function viewDiary(id) {
         <span class="font-bold text-lg">${esc(d.title||'无标题')}</span>
       </div>
       ${d.content?`<p class="text-sm whitespace-pre-wrap leading-relaxed">${esc(d.content)}</p>`:'<p class="text-sm" style="color:var(--sub)">（无内容）</p>'}
-      ${d.image?`<img src="${d.image}" class="media-thumb mt-2 max-w-full max-h-64 rounded-xl" onclick="window.open('${d.image}')" alt="日记图片">`:''}
+      ${renderImageHTML(getImages(d), 220)}
     </div>
   `, ()=>{}, true);
   document.getElementById('modal-save').textContent = '关闭';
@@ -1473,8 +1517,8 @@ function addDiary() {
       </div>
       <textarea class="input" id="dy-content" placeholder="今天发生了什么..." rows="5"></textarea>
       <div>
-        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选）</label>
-        <input type="file" accept="image/*" id="dy-image" class="text-xs" style="width:100%">
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选，支持多选）</label>
+        <input type="file" accept="image/*" id="dy-image" class="text-xs" style="width:100%" multiple>
       </div>
     </div>`, () => {
     var date = document.getElementById('dy-date').value;
@@ -1483,8 +1527,8 @@ function addDiary() {
     var fi = document.getElementById('dy-image');
     var mood = window._diaryMood||'😊';
 
-    var saveIt = function(img) {
-      S.diaries.push({id:uid(), date:date, title:title, content:content, image:img||'', mood:mood});
+    var saveIt = function(imgs) {
+      S.diaries.push({id:uid(), date:date, title:title, content:content, images:imgs, mood:mood});
       save('diaries'); renderDiary(); toast('日记已保存 📔');
 
       // Lion analyzes diary content
@@ -1505,9 +1549,7 @@ function addDiary() {
       }
     };
 
-    if (fi.files&&fi.files[0]) {
-      const r = new FileReader(); r.onload=()=>saveIt(r.result); r.readAsDataURL(fi.files[0]);
-    } else { saveIt(''); }
+    readFiles(fi.files).then(saveIt);
   }, true);
 }
 
@@ -1563,9 +1605,11 @@ function renderWishDetail() {
   if (!w.messages) w.messages = [];
 
   const condsHTML = w.conditions.map(c => `
-    <div class="cond-item flex items-center gap-2 ${c.done?'cond-done':''}" onclick="togCond('${w.id}','${c.id}')">
-      <span class="text-base flex-shrink-0">${c.done?'✅':'⬜'}</span>
-      <span class="text-sm">${esc(c.text)}</span>
+    <div class="cond-item flex items-center gap-2 ${c.done?'cond-done':''}">
+      <span class="text-base flex-shrink-0" style="cursor:pointer" onclick="togCond('${w.id}','${c.id}')">${c.done?'✅':'⬜'}</span>
+      <span class="text-sm flex-1" style="cursor:pointer" onclick="togCond('${w.id}','${c.id}')">${esc(c.text)}</span>
+      <button class="btn btn-xs" style="padding:.15rem .4rem;font-size:.65rem;background:var(--hover);color:var(--sub);border:none;cursor:pointer" onclick="event.stopPropagation();editCond('${w.id}','${c.id}')" title="编辑">✏️</button>
+      <button class="btn btn-xs" style="padding:.15rem .4rem;font-size:.65rem;background:var(--hover);color:var(--red);border:none;cursor:pointer" onclick="event.stopPropagation();delCond('${w.id}','${c.id}')" title="删除">✕</button>
     </div>`).join('');
 
   const msgsHTML = [...w.messages].reverse().map(m => `
@@ -1638,6 +1682,25 @@ function togCond(wishId, condId) {
   if (!w) return;
   const c = (w.conditions||[]).find(x=>x.id===condId);
   if (c) { c.done = !c.done; save('wishes'); renderWishDetail(); }
+}
+
+function editCond(wishId, condId) {
+  const w = S.wishes.find(x=>x.id===wishId);
+  if (!w) return;
+  const c = (w.conditions||[]).find(x=>x.id===condId);
+  if (!c) return;
+  const newText = prompt('编辑条件：', c.text);
+  if (newText === null || !newText.trim()) return;
+  c.text = newText.trim();
+  save('wishes'); renderWishDetail(); toast('条件已更新 ✏️');
+}
+
+function delCond(wishId, condId) {
+  if (!confirm('确定删除这个条件吗？')) return;
+  const w = S.wishes.find(x=>x.id===wishId);
+  if (!w) return;
+  w.conditions = (w.conditions||[]).filter(c=>c.id!==condId);
+  save('wishes'); renderWishDetail(); toast('条件已删除');
 }
 
 function addWishMsg(wishId) {
@@ -1747,8 +1810,8 @@ function renderWHDetail() {
     const isExp = item.expiryDate && new Date(item.expiryDate+'T00:00:00')-new Date(today+'T00:00:00') <= 30*86400000;
     const isExpired = item.expiryDate && item.expiryDate < today;
     return `<div class="wh-item" onclick="viewWHItem('${item.id}')">
-      ${item.image
-        ? `<img src="${item.image}" class="wh-thumb" alt="${esc(item.name)}">`
+      ${getImages(item).length
+        ? `<img src="${getImages(item)[0]}" class="wh-thumb" alt="${esc(item.name)}">`
         : `<div class="wh-thumb">${WH_ICONS[cat]||'📦'}</div>`}
       <div class="text-xs font-medium mt-1.5 truncate">${esc(item.name)}</div>
       <div class="text-xs" style="color:var(--sub)">${esc(item.subCat||'')}</div>
@@ -1781,7 +1844,7 @@ function viewWHItem(id) {
   const cat = item.mainCat;
   modal(`${WH_ICONS[cat]||'📦'} ${esc(item.name)}`, `
     <div class="space-y-3">
-      ${item.image?`<img src="${item.image}" class="rounded-xl max-w-full max-h-48 object-cover">`:''}
+      ${renderImageHTML(getImages(item), 180)}
       <div class="grid grid-cols-2 gap-2 text-sm">
         <div><span style="color:var(--sub)">分类：</span>${esc(item.mainCat)} / ${esc(item.subCat||'无')}</div>
         ${item.purchaseDate?`<div><span style="color:var(--sub)">购买日：</span>${item.purchaseDate}</div>`:''}
@@ -1802,8 +1865,8 @@ function addWHItem(cat) {
       <input class="input" id="whi-name" placeholder="物品名称 *" autofocus>
       <select class="input" id="whi-subcat">${subCats.length?subCats.map(s=>`<option value="${s}">${s}</option>`).join(''):'<option value="">无分类</option>'}</select>
       <div>
-        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选）</label>
-        <input type="file" accept="image/*" id="whi-image" class="text-xs" style="width:100%">
+        <label class="text-xs font-medium mb-1 block" style="color:var(--sub)">图片（可选，支持多选）</label>
+        <input type="file" accept="image/*" id="whi-image" class="text-xs" style="width:100%" multiple>
       </div>
       <input class="input" id="whi-note" placeholder="备注（可选）">
       <div class="flex gap-2">
@@ -1820,11 +1883,10 @@ function addWHItem(cat) {
       name, note:document.getElementById('whi-note').value.trim(),
       purchaseDate:document.getElementById('whi-purchase').value,
       expiryDate:document.getElementById('whi-expiry').value,
-      image:''
+      images:[]
     };
-    const saveIt = (img) => { data.image=img||''; S.warehouseItems.push(data); save('warehouseItems'); renderWHDetail(); toast('已添加 ✅'); };
-    if (fi.files&&fi.files[0]) { const r=new FileReader(); r.onload=()=>saveIt(r.result); r.readAsDataURL(fi.files[0]); }
-    else saveIt('');
+    const saveIt = (imgs) => { data.images=imgs; S.warehouseItems.push(data); save('warehouseItems'); renderWHDetail(); toast('已添加 ✅'); };
+    readFiles(fi.files).then(saveIt);
   }, true);
 }
 
@@ -1967,6 +2029,69 @@ function appendChatMsg(role, content) {
   }
 }
 
+// Build a summary of all user data for AI context (no images, text only)
+function buildDataContext() {
+  try {
+    var ctx = '\n\n=== 用户数据摘要（以下数据均为真实用户数据，你可以据此回答用户问题） ===\n';
+    ctx += '当前日期：'+fmt(new Date())+'\n';
+
+    // Diary
+    ctx += '\n【日记本】共 '+S.diaries.length+' 篇：\n';
+    S.diaries.slice(0,50).forEach(function(d){
+      ctx += '- '+d.date+' ['+(d.mood||'')+'] '+(d.title||'无标题')+' — '+(d.content||'').slice(0,200)+'\n';
+    });
+    if (S.diaries.length>50) ctx += '...还有'+(S.diaries.length-50)+'篇\n';
+
+    // Wishes
+    ctx += '\n【心愿单】共 '+S.wishes.length+' 个：\n';
+    S.wishes.forEach(function(w){
+      var conds = w.conditions||[];
+      var done = conds.filter(function(c){return c.done;}).length;
+      ctx += '- '+w.name+' ('+done+'/'+conds.length+' 完成)\n';
+      conds.forEach(function(c){
+        ctx += '  '+(c.done?'✅':'⬜')+' '+c.text+'\n';
+      });
+      if ((w.messages||[]).length) ctx += '  💬 '+(w.messages||[]).length+' 条留言\n';
+    });
+
+    // Tasks
+    ctx += '\n【任务栏】共 '+S.tasks.length+' 个任务：\n';
+    S.tasks.forEach(function(t){
+      var checks = t.checkins||[];
+      ctx += '- '+t.name+' ['+(t.category||'默认')+'] 打卡'+checks.length+'次';
+      if (checks.length) {
+        var last = checks[checks.length-1];
+        ctx += ' 最近:'+last.date;
+      }
+      ctx += '\n';
+    });
+
+    // Calendar / Todos
+    ctx += '\n【待办】共 '+S.todos.length+' 条\n';
+
+    // Countdown
+    ctx += '\n【纪念日】共 '+S.anniversaries.length+' 个：\n';
+    S.anniversaries.forEach(function(a){
+      ctx += '- '+a.name+' ('+a.date+')\n';
+    });
+
+    // Finance (last 3 months)
+    ctx += '\n【记账】共 '+S.transactions.length+' 笔\n';
+
+    // Archive
+    ctx += '\n【档案】共 '+S.archives.length+' 个：\n';
+    S.archives.forEach(function(a){
+      ctx += '- '+a.name+' '+(a.clues||[]).length+'条线索\n';
+    });
+
+    // Warehouse
+    ctx += '\n【仓库】共 '+S.warehouseItems.length+' 件物品\n';
+
+    ctx += '\n=== 数据摘要结束 ===\n';
+    return ctx;
+  } catch(e) { return ''; }
+}
+
 async function sendChat() {
   const input = document.getElementById('chat-input');
   if (!input) return;
@@ -1980,13 +2105,14 @@ async function sendChat() {
     return;
   }
 
-  // Build messages for API
+  // Build messages for API — include data context so AI can answer questions about user data
+  var systemContent = LION_SYSTEM + '\n\n' + buildDataContext();
   const msgs = [
-    { role:'system', content: LION_SYSTEM },
+    { role:'system', content: systemContent },
     ...S.chatHistory.slice(-20).map(m => ({ role: m.role, content: m.content })),
   ];
 
-  var reply = await callAI(msgs, 200);
+  var reply = await callAI(msgs, 300);
   if (reply) {
     appendChatMsg('assistant', reply);
   } else {
@@ -2321,6 +2447,80 @@ document.addEventListener('keydown', e => {
     go(NAV[parseInt(e.key)-1].id);
   }
 });
+
+// ==================== DATA IMPORT/EXPORT ====================
+function showDataIO() {
+  modal('📦 数据导入导出', `
+    <div class="space-y-3">
+      <div class="card p-3" style="background:var(--hover)">
+        <h4 class="font-semibold text-sm mb-2">📤 导出数据</h4>
+        <p class="text-xs mb-2" style="color:var(--sub)">将所有本地数据导出为 JSON，自动复制到剪贴板。</p>
+        <button class="btn btn-primary btn-sm w-full" id="btn-export" onclick="exportData()">📋 导出并复制到剪贴板</button>
+      </div>
+      <div class="card p-3" style="background:var(--hover)">
+        <h4 class="font-semibold text-sm mb-2">📥 导入数据</h4>
+        <p class="text-xs mb-2" style="color:var(--sub)">粘贴之前导出的 JSON 数据。导入前会自动备份当前数据。</p>
+        <textarea class="input" id="import-json" placeholder="在此粘贴 JSON 数据..." rows="4" style="font-size:.75rem"></textarea>
+        <button class="btn btn-sm w-full mt-2" style="background:#fbbf24;color:#000;border:none" id="btn-import" onclick="importData()">⚠️ 导入数据（覆盖当前数据）</button>
+      </div>
+    </div>
+  `, ()=>{}, true);
+  document.getElementById('modal-save').textContent = '关闭';
+  document.getElementById('modal-save').onclick = closeModal;
+}
+
+function exportData() {
+  try {
+    const data = {};
+    for (let i=0;i<localStorage.length;i++) {
+      const key = localStorage.key(i);
+      if (key&&key.startsWith('wb-')) {
+        data[key] = localStorage.getItem(key);
+      }
+    }
+    const json = JSON.stringify(data, null, 2);
+    navigator.clipboard.writeText(json).then(() => {
+      toast('数据已复制到剪贴板！📋');
+    }).catch(() => {
+      // Fallback: show in textarea
+      const ta = document.getElementById('import-json');
+      if (ta) { ta.value = json; toast('已填入下方文本框，请手动复制', 'info'); }
+    });
+  } catch(e) {
+    toast('导出失败：'+e.message, 'error');
+  }
+}
+
+function importData() {
+  const ta = document.getElementById('import-json');
+  if (!ta || !ta.value.trim()) { toast('请先粘贴 JSON 数据','error'); return; }
+  try {
+    const data = JSON.parse(ta.value);
+    if (typeof data !== 'object' || !data) { toast('数据格式无效','error'); return; }
+    if (!confirm('确定要导入数据吗？\n\n当前数据将被备份到 wb-backup-* 键中，然后被覆盖。\n导入后页面将自动刷新。')) return;
+
+    // Backup current data
+    for (let i=0;i<localStorage.length;i++) {
+      const key = localStorage.key(i);
+      if (key&&key.startsWith('wb-')&&!key.startsWith('wb-backup-')) {
+        localStorage.setItem('wb-backup-'+key.slice(3), localStorage.getItem(key));
+      }
+    }
+
+    // Import new data
+    let count = 0;
+    for (const [key, value] of Object.entries(data)) {
+      if (key.startsWith('wb-')) {
+        localStorage.setItem(key, value);
+        count++;
+      }
+    }
+    toast('已导入 '+count+' 个数据项，即将刷新...');
+    setTimeout(() => location.reload(), 1000);
+  } catch(e) {
+    toast('导入失败：'+e.message, 'error');
+  }
+}
 
 // ==================== BOOT ====================
 function boot() {
