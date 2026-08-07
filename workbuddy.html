@@ -2029,65 +2029,154 @@ function appendChatMsg(role, content) {
   }
 }
 
-// Build a summary of all user data for AI context (no images, text only)
-function buildDataContext() {
+// Build targeted data context based on user's question to save tokens.
+// Only includes sections relevant to what the user is asking about.
+function buildDataContext(userMsg) {
   try {
-    var ctx = '\n\n=== 用户数据摘要（以下数据均为真实用户数据，你可以据此回答用户问题） ===\n';
-    ctx += '当前日期：'+fmt(new Date())+'\n';
+    var msg = (userMsg||'').toLowerCase();
 
-    // Diary
-    ctx += '\n【日记本】共 '+S.diaries.length+' 篇：\n';
-    S.diaries.slice(0,50).forEach(function(d){
-      ctx += '- '+d.date+' ['+(d.mood||'')+'] '+(d.title||'无标题')+' — '+(d.content||'').slice(0,200)+'\n';
-    });
-    if (S.diaries.length>50) ctx += '...还有'+(S.diaries.length-50)+'篇\n';
+    // ---- Keyword detection ----
+    var wantDiary = /日记|心情|状态|写.*日记|记录|最近.*怎么|最近.*如何|这段|情绪|感受/.test(msg);
+    var wantArchive = /档案|线索|记忆|回忆|珍藏/.test(msg);
+    var wantWishes = /心愿|愿望|进度|条件|实现|达成/.test(msg);
+    var wantTasks = /任务|打卡|坚持|习惯|完成.*任务|任务.*进度/.test(msg);
+    var wantFinance = /记账|钱|花钱|收入|支出|消费|财务|账|花了|赚了|结余/.test(msg);
+    var wantCD = /纪念日|纪念|倒计时|日子.*纪念|生日|恋爱/.test(msg);
+    var wantWH = /仓库|物品|库存|过期|保质期|临期|存货/.test(msg);
+    var wantTodos = /待办|日程|日历|计划/.test(msg);
 
-    // Wishes
-    ctx += '\n【心愿单】共 '+S.wishes.length+' 个：\n';
-    S.wishes.forEach(function(w){
-      var conds = w.conditions||[];
-      var done = conds.filter(function(c){return c.done;}).length;
-      ctx += '- '+w.name+' ('+done+'/'+conds.length+' 完成)\n';
-      conds.forEach(function(c){
-        ctx += '  '+(c.done?'✅':'⬜')+' '+c.text+'\n';
+    // If nothing specific detected, return minimal overview
+    var anySpecific = wantDiary || wantArchive || wantWishes || wantTasks ||
+                      wantFinance || wantCD || wantWH || wantTodos;
+
+    var ctx = '\n\n=== 用户数据（按需加载，节省token）===\n';
+    ctx += '今日：'+fmt(new Date())+'\n';
+
+    // Always include a one-line summary of everything (very cheap)
+    ctx += '【概览】日记'+S.diaries.length+'篇 | 任务'+S.tasks.length+'个 | 心愿'+S.wishes.length+'个 | 待办'+S.todos.length+'条 | 记账'+S.transactions.length+'笔 | 档案'+S.archives.length+'个 | 纪念日'+S.anniversaries.length+'个 | 仓库'+S.warehouseItems.length+'件\n';
+
+    if (!anySpecific) {
+      // General chat — just the overview, no detail needed
+      ctx += '\n（用户在闲聊，无需读取详细数据，自然回复即可）\n';
+      return ctx;
+    }
+
+    // ---- Diary detail ----
+    if (wantDiary && S.diaries.length) {
+      ctx += '\n【日记本】最近日记：\n';
+      var sorted = [...S.diaries].sort(function(a,b){return b.date.localeCompare(a.date);});
+      sorted.slice(0, 20).forEach(function(d){
+        ctx += '- '+d.date+' ['+(d.mood||'')+'] '+(d.title||'无标题');
+        if (d.content) ctx += ' — '+(d.content||'').slice(0,150);
+        ctx += '\n';
       });
-      if ((w.messages||[]).length) ctx += '  💬 '+(w.messages||[]).length+' 条留言\n';
-    });
+      if (sorted.length>20) ctx += '...共'+sorted.length+'篇，以上为最近20篇\n';
+    }
 
-    // Tasks
-    ctx += '\n【任务栏】共 '+S.tasks.length+' 个任务：\n';
-    S.tasks.forEach(function(t){
-      var checks = t.checkins||[];
-      ctx += '- '+t.name+' ['+(t.category||'默认')+'] 打卡'+checks.length+'次';
-      if (checks.length) {
-        var last = checks[checks.length-1];
-        ctx += ' 最近:'+last.date;
+    // ---- Archive detail ----
+    if (wantArchive && S.archives.length) {
+      ctx += '\n【档案】详情：\n';
+      S.archives.forEach(function(a){
+        ctx += '- '+a.name;
+        if (a.desc) ctx += '（'+a.desc+'）';
+        ctx += ' '+(a.clues||[]).length+'条线索';
+        // Include last 3 clues
+        var clues = (a.clues||[]).slice(-3);
+        if (clues.length) {
+          clues.forEach(function(c){
+            ctx += '\n    '+c.time+' '+(c.text||'').slice(0,100);
+          });
+        }
+        ctx += '\n';
+      });
+    }
+
+    // ---- Wishes detail ----
+    if (wantWishes && S.wishes.length) {
+      ctx += '\n【心愿单】详情：\n';
+      S.wishes.forEach(function(w){
+        var conds = w.conditions||[];
+        var done = conds.filter(function(c){return c.done;}).length;
+        ctx += '- '+w.name+' ('+done+'/'+conds.length+' 完成)\n';
+        conds.forEach(function(c){
+          ctx += '  '+(c.done?'✅':'⬜')+' '+c.text+'\n';
+        });
+        if ((w.messages||[]).length) ctx += '  💬 '+(w.messages||[]).length+' 条留言\n';
+      });
+    }
+
+    // ---- Tasks detail ----
+    if (wantTasks && S.tasks.length) {
+      ctx += '\n【任务栏】详情：\n';
+      S.tasks.forEach(function(t){
+        var checks = t.checkins||[];
+        ctx += '- '+t.name+' ['+(t.category||'默认')+'] 打卡'+checks.length+'次';
+        if (checks.length) {
+          var last = checks[checks.length-1];
+          ctx += ' 最近:'+last.date;
+        }
+        // Last checkin text if any
+        if (checks.length && last.text) ctx += ' 心得:'+last.text.slice(0,80);
+        ctx += '\n';
+      });
+    }
+
+    // ---- Finance detail (last 3 months) ----
+    if (wantFinance) {
+      var now = new Date();
+      var recent = [];
+      for (var i=0;i<3;i++) {
+        var m = now.getMonth()-i; var y = now.getFullYear();
+        while (m<0) { m+=12; y--; }
+        var ms = y+'-'+String(m+1).padStart(2,'0');
+        var txs = S.transactions.filter(function(tx){return tx.date.startsWith(ms);});
+        var inc = txs.filter(function(tx){return tx.type==='income'}).reduce(function(s,tx){return s+tx.amount;},0);
+        var exp = txs.filter(function(tx){return tx.type==='expense'}).reduce(function(s,tx){return s+tx.amount;},0);
+        recent.push(ms+' 收入¥'+inc.toFixed(0)+' 支出¥'+exp.toFixed(0));
       }
-      ctx += '\n';
-    });
+      ctx += '\n【记账】最近3个月：\n'+recent.map(function(r){return '- '+r;}).join('\n')+'\n';
+    }
 
-    // Calendar / Todos
-    ctx += '\n【待办】共 '+S.todos.length+' 条\n';
+    // ---- Countdown detail ----
+    if (wantCD && S.anniversaries.length) {
+      ctx += '\n【纪念日】详情：\n';
+      S.anniversaries.forEach(function(a){
+        ctx += '- '+a.name+' '+a.date+' ('+(a.mode==='countup'?'正数':'倒数')+')\n';
+      });
+    }
 
-    // Countdown
-    ctx += '\n【纪念日】共 '+S.anniversaries.length+' 个：\n';
-    S.anniversaries.forEach(function(a){
-      ctx += '- '+a.name+' ('+a.date+')\n';
-    });
+    // ---- Warehouse detail ----
+    if (wantWH && S.warehouseItems.length) {
+      ctx += '\n【仓库】详情：\n';
+      // Show expiring items first
+      var today = fmt(new Date());
+      S.warehouseItems.forEach(function(item){
+        var exp = item.expiryDate || '';
+        var warn = '';
+        if (exp && exp < today) warn = ' ⚠️已过期';
+        else if (exp && new Date(exp+'T00:00:00')-new Date(today+'T00:00:00')<=30*86400000) warn = ' ⚠️临期';
+        ctx += '- '+item.name+' ['+(item.mainCat||'')+']'+(exp?' 到期:'+exp:'')+warn+'\n';
+      });
+    }
 
-    // Finance (last 3 months)
-    ctx += '\n【记账】共 '+S.transactions.length+' 笔\n';
+    // ---- Todos detail ----
+    if (wantTodos && S.todos.length) {
+      ctx += '\n【待办】详情：\n';
+      // Group by date
+      var todoMap = {};
+      S.todos.forEach(function(t){
+        if (!todoMap[t.date]) todoMap[t.date] = [];
+        todoMap[t.date].push(t);
+      });
+      var dates = Object.keys(todoMap).sort();
+      dates.forEach(function(d){
+        ctx += d+': ';
+        ctx += todoMap[d].map(function(t){return (t.done?'✅':'⬜')+t.text;}).join(' | ');
+        ctx += '\n';
+      });
+    }
 
-    // Archive
-    ctx += '\n【档案】共 '+S.archives.length+' 个：\n';
-    S.archives.forEach(function(a){
-      ctx += '- '+a.name+' '+(a.clues||[]).length+'条线索\n';
-    });
-
-    // Warehouse
-    ctx += '\n【仓库】共 '+S.warehouseItems.length+' 件物品\n';
-
-    ctx += '\n=== 数据摘要结束 ===\n';
+    ctx += '\n=== 数据结束 ===\n';
     return ctx;
   } catch(e) { return ''; }
 }
@@ -2105,8 +2194,8 @@ async function sendChat() {
     return;
   }
 
-  // Build messages for API — include data context so AI can answer questions about user data
-  var systemContent = LION_SYSTEM + '\n\n' + buildDataContext();
+  // Build messages for API — targeted data context based on user's question
+  var systemContent = LION_SYSTEM + '\n\n' + buildDataContext(text);
   const msgs = [
     { role:'system', content: systemContent },
     ...S.chatHistory.slice(-20).map(m => ({ role: m.role, content: m.content })),
