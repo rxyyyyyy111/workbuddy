@@ -2470,7 +2470,7 @@ function renderSpirits() {
       '<button class="btn btn-sm" style="background:'+(isOn?'var(--accent)':'var(--hover)')+';color:'+(isOn?'#fff':'var(--sub)')+';border:none;font-size:.75rem" onclick="toggleCompanionMode()">'+(isOn?'🟢 陪伴中':'⏸ 已封存')+'</button>'+
     '</div>'+
     '<p class="text-sm mb-3" style="color:var(--sub)">'+(isOn?'陪伴模式已开启：精灵会在日记和打卡中主动评论你。右下角浮动头像同步为当前精灵。':'陪伴模式已封存：精灵暂时休眠，不会评论。')+'</p>'+
-    '<div class="card p-3 mb-4"><span class="text-xs" style="color:var(--sub)">🔧 文件上传测试（不在弹窗内）：</span><br>'+fileInputHTML('test-file-upload','image/*',true,'')+'</div>'+
+    '<div class="card p-3 mb-4"><span class="text-xs" style="color:var(--sub)">🔧 测试1（原生）：</span><br><input type="file"><br><br><span class="text-xs" style="color:var(--sub)">🔧 测试2（accept=image/*）：</span><br><input type="file" accept="image/*"></div>'+
     curCard+
     gallery+
   '</div>';
