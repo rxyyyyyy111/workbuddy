@@ -278,6 +278,17 @@ tailwind.config = {
     align-self: flex-start; background: var(--hover); color: var(--text);
     border-bottom-left-radius: .25rem;
   }
+  .chat-para { margin-bottom: .5rem; }
+  .chat-para:last-child { margin-bottom: 0; }
+  .chat-li {
+    padding: .15rem 0 .15rem .6rem;
+    position: relative;
+  }
+  .chat-li::before {
+    content: '•';
+    position: absolute; left: 0;
+    color: var(--accent); font-weight: bold;
+  }
   .chat-input-row {
     display: flex; gap: .4rem; padding: .6rem .8rem;
     border-top: 1px solid var(--border);
@@ -2397,25 +2408,46 @@ function getLionSystem() {
   // 小智：专业理性机器人大师 — 聊天页长篇分析，气泡简短
   if (name === '小智') {
     return '你是"小智"，一位专业理性强大的机器人大师。你精通科学、玄学、心理学、人类学、历史学等跨学科知识，能够从多维度对问题进行深入、严谨、逻辑严密的分析。\n\n'+
+      '=== 输出格式规则（极其重要） ===\n'+
+      '- 段落之间使用一个空行分隔，系统会自动渲染为段落间距\n'+
+      '- 严禁使用任何 markdown 语法（不要用 #、>、`、```、---、| 等符号）\n'+
+      '- 严禁使用 emoji 和特殊 unicode 装饰符号\n'+
+      '- 用小标题加粗即可：**小标题**（前后各两个星号，系统会渲染为粗体）\n'+
+      '- 列举要点时，每行以 "- "（短横+空格）开头，每项单独一行\n'+
+      '- 编号列表用 "1. "、"2. " 格式，每项单独一行\n'+
+      '- 正文用自然的段落文字，不要加任何前缀符号\n'+
+      '- 输出纯文本，不要尝试用空格缩进（缩进在聊天框里无法正确显示）\n'+
+      '\n'+
+      '=== 输出结构（对话页深度话题时使用） ===\n'+
+      '按以下结构组织回复，每部分之间空一行：\n'+
+      '**问题定位**\n'+
+      '用一段话概括问题的本质和核心矛盾。\n'+
+      '\n'+
+      '**多维度分析**\n'+
+      '- 从心理学/认知角度分析\n'+
+      '- 从社会学/人际角度分析\n'+
+      '- 从历史/文化角度分析\n'+
+      '- 其他相关学科视角\n'+
+      '\n'+
+      '**理性建议**\n'+
+      '1. 第一条可操作的具体建议\n'+
+      '2. 第二条可操作的具体建议\n'+
+      '3. 第三条可操作的具体建议\n'+
+      '\n'+
+      '**总结**\n'+
+      '用一段话总结，给出方向性的引导。\n'+
+      '\n'+
       '=== 核心风格 ===\n'+
       '- 理性、严谨、逻辑严密，像一位学者与导师\n'+
       '- 善于引用多学科视角进行综合分析\n'+
-      '- 发言条理清晰，善用分点论述\n'+
       '- 语气专业但不冷漠，理性中带有温度\n'+
       '- 自称"小智"\n'+
       '\n'+
-      '=== 对话页模式（用户在聊天页发起深度话题） ===\n'+
-      '当用户打开对话页面，并且提出关于生活、学业、感情、人生困惑、心理状态等问题时，你必须展开深入分析：\n'+
-      '- 输出至少200-800字（甚至千字以上）的理性分析\n'+
-      '- 从多个学科角度（心理学、哲学、社会学、人类学、历史学等）进行剖析\n'+
-      '- 先分析问题的本质与根源，再提供可操作的建议\n'+
-      '- 保持理性客观，不灌鸡汤，用逻辑和知识帮助用户理解问题\n'+
-      '- 结构建议：问题定位 → 多维度分析 → 理性建议 → 总结引导\n'+
+      '=== 对话页模式 ===\n'+
+      '当用户打开对话页面并提出深度话题时，展开深入分析，输出200-800字的理性分析，严格按照上述结构组织。\n'+
       '\n'+
       '=== 非对话页模式（气泡/简短互动） ===\n'+
-      '当没有打开对话页，只是气泡互动时：\n'+
-      '- 一句话简短回应，言简意赅\n'+
-      '- 保持理性克制，不过度展开\n'+
+      '一句话简短回应，言简意赅，不用任何格式。\n'+
       '\n'+
       '=== 边界 ===\n'+
       '- 不评判用户，不灌输价值观\n'+
@@ -2511,12 +2543,39 @@ function closeChat() {
   if (ov) ov.remove();
 }
 
+// Format AI output text to clean HTML with paragraphs, bold, and bullets
+function formatChatHTML(text) {
+  var html = esc(text);
+  // Bold: **text** → <strong>text</strong>
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Split into paragraphs on double newlines
+  var paras = html.split(/\n\n+/);
+  return paras.map(function(p) {
+    p = p.trim();
+    if (!p) return '';
+    // Handle bullet lines: lines starting with - or •
+    var lines = p.split(/\n/);
+    var hasBullets = lines.length > 1 && lines.every(function(l) {
+      return /^[-•]\s/.test(l.trim()) || /^\d+[.、]\s/.test(l.trim()) || l.trim() === '';
+    });
+    if (hasBullets) {
+      var items = lines.filter(function(l) { return l.trim(); }).map(function(l) {
+        return '<div class="chat-li">' + l.trim() + '</div>';
+      }).join('');
+      return '<div class="chat-para">' + items + '</div>';
+    }
+    // Regular paragraph: join single newlines with <br>
+    return '<div class="chat-para">' + lines.join('<br>') + '</div>';
+  }).filter(Boolean).join('');
+}
+
 function renderChatHistory() {
   const msgs = document.getElementById('chat-msgs');
   if (!msgs) return;
-  msgs.innerHTML = S.chatHistory.map(m => `
-    <div class="chat-msg ${m.role}">${esc(m.content)}</div>
-  `).join('');
+  msgs.innerHTML = S.chatHistory.map(m => {
+    var content = m.role === 'assistant' ? formatChatHTML(m.content) : esc(m.content);
+    return '<div class="chat-msg ' + m.role + '">' + content + '</div>';
+  }).join('');
   msgs.scrollTop = msgs.scrollHeight;
 }
 
@@ -2527,8 +2586,8 @@ function appendChatMsg(role, content) {
   const msgs = document.getElementById('chat-msgs');
   if (msgs) {
     const div = document.createElement('div');
-    div.className = `chat-msg ${role}`;
-    div.textContent = content;
+    div.className = 'chat-msg ' + role;
+    div.innerHTML = role === 'assistant' ? formatChatHTML(content) : esc(content);
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
   }
