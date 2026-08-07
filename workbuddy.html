@@ -413,7 +413,7 @@ const S = {
 // Spirit character pool (5 image-based characters)
 const SPIRIT_POOL = [
   { personality:'可爱懒散', img:'花生酱.png', color:'#f97316', tone:'一只软乎乎的小橘猫，懒洋洋的，爱撒娇。自称"酱酱"，说话软软的，但偶尔也会傲娇。"唔…好困…但是可以陪你一会儿啦～"' },
-  { personality:'神秘', img:'狮狮.jpg', color:'#ec4899', tone:'住在手机里的小狮子，性格毒舌搞怪又邪恶可爱。自称"狮狮"，嘴上不饶人但其实超宠用户。"哼，才不是为了你才醒着的！"' },
+  { personality:'高冷傲慢毒舌', img:'狮狮.jpg', color:'#ec4899', tone:'一只高冷傲慢的小狮子，毒舌又傲娇。自称"狮狮"，对用户爱理不理但心里超在意。"哼，随便你。"' },
   { personality:'活泼搞怪', img:'蛋小黄.png', color:'#fbbf24', tone:'一颗圆滚滚的蛋黄，元气满满！自称"蛋蛋"，爱用感叹号，说话跳脱，永远在蹦跶。"哇！！！好棒好棒！！"' },
   { personality:'腹黑邪恶', img:'邪恶大耳狗.png', color:'#a78bfa', tone:'表面笑嘻嘻的大耳朵狗，自称"本汪"，心里门儿清。偶尔冒出让人后背发凉的吐槽。"（微笑）你确定要这样吗？"' },
 ];
@@ -2166,12 +2166,11 @@ function renderSpirits() {
   var memCount = (S.spiritMemories||[]).length;
 
   // Current spirit card
-  var isMysterious = cur.personality === '神秘';
   var curCard = '<div class="card p-5 slide-up text-center mb-4" style="border:2px solid '+cur.color+'">'+
     '<img src="./'+cur.img+'" style="width:100px;height:100px;border-radius:50%;object-fit:cover;margin:0 auto" alt="'+esc(cur.name)+'">'+
     '<div class="font-bold text-lg mt-2">'+esc(cur.name)+'</div>'+
-    (isMysterious ? '<div class="text-xs mt-1" style="color:var(--sub)">???</div>' : '<div class="text-xs mt-0.5 px-3 py-0.5 rounded-full inline-block" style="background:'+cur.color+'20;color:'+cur.color+'">'+cur.personality+'</div>')+
-    (isMysterious ? '' : '<div class="text-xs mt-2" style="color:var(--sub)">'+esc(cur.tone)+'</div>')+
+    '<div class="text-xs mt-0.5 px-3 py-0.5 rounded-full inline-block" style="background:'+cur.color+'20;color:'+cur.color+'">'+cur.personality+'</div>'+
+    '<div class="text-xs mt-2" style="color:var(--sub)">'+esc(cur.tone)+'</div>'+
     '<div class="text-xs mt-1" style="color:var(--sub)">💭 '+memCount+' 条记忆</div>'+
   '</div>';
 
@@ -2180,11 +2179,10 @@ function renderSpirits() {
   SPIRIT_POOL.forEach(function(p, i){
     var pName = p.img.replace(/\.(png|jpg|jpeg|gif|webp)$/i,'');
     var isActive = cur.name === pName;
-    var isMyst = p.personality === '神秘';
     gallery += '<div class="card p-3 text-center slide-up" style="'+(isActive?'border:2px solid '+cur.color+';background:'+cur.color+'10':'')+'">'+
       '<img src="./'+p.img+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover;margin:0 auto" alt="'+esc(pName)+'">'+
       '<div class="text-xs font-bold mt-1">'+esc(pName)+'</div>'+
-      (isMyst ? '<div class="text-xs mt-0.5" style="color:var(--sub)">???</div>' : '<div class="text-xs px-2 py-0.5 rounded-full inline-block mt-0.5" style="font-size:.6rem;background:'+p.color+'20;color:'+p.color+'">'+p.personality+'</div>')+
+      '<div class="text-xs px-2 py-0.5 rounded-full inline-block mt-0.5" style="font-size:.6rem;background:'+p.color+'20;color:'+p.color+'">'+p.personality+'</div>'+
       (isActive
         ? '<div class="text-xs mt-1 font-bold" style="color:'+cur.color+'">⭐ 当前精灵</div>'
         : '<button class="btn btn-xs mt-1" style="font-size:.6rem;padding:.15rem .5rem;background:var(--accent);color:#fff;border:none;cursor:pointer" onclick="switchSpirit('+i+')">🔄 切换</button>'
@@ -2355,7 +2353,7 @@ function refreshSpiritMsgs(parentId, chat) {
 function getCannedReply(spirit, userMsg) {
   var replies = {
     '可爱懒散': ['唔…', '勉强陪你一下啦～', '（伸懒腰）还行吧。'],
-    '神秘': ['哼。', '……算你厉害。', '（瞥了你一眼）还可以吧。'],
+    '高冷傲慢毒舌': ['哼。', '……随便你。', '（瞥了一眼）还行吧，勉强。'],
     '活泼搞怪': ['哇塞！！！', '太有意思了哈哈哈！', '冲鸭冲鸭！！'],
     '腹黑邪恶': ['（微笑）有意思。', '哦？是这样啊～', '你确定吗？（歪头）'],
   };
