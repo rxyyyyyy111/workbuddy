@@ -1927,27 +1927,27 @@ function renderPwd() {
     );
   }
 
-  const now = new Date();
   const resultInfo = filter ? `<span class="text-xs ml-2" style="color:var(--sub)">找到 ${items.length} 条</span>` : '';
 
   let html = items.map(p => {
     const id = p.id;
     const isShown = window['_pwdShow_'+id] || false;
-    const dots = '•'.repeat(Math.min(12, (p.password||'').length));
-    return `<div class="card p-3.5 slide-up">
+    const dots = '•'.repeat(Math.min(16, (p.password||'').length));
+    return `<div class="card p-3.5 slide-up" style="position:relative">
       <div class="flex items-start justify-between gap-2">
         <div class="flex-1 min-w-0">
           <div class="font-semibold text-sm">🔐 ${esc(p.name||'未命名')}</div>
-          <div class="flex items-center gap-2 mt-1 flex-wrap text-xs" style="color:var(--sub)">
-            <span>👤 ${esc(p.account||'—')}</span>
-            <span style="cursor:pointer;user-select:none;font-family:monospace;letter-spacing:2px" onclick="togglePwdShow('${id}')" title="点击切换显示/隐藏">
-              🔑 ${isShown?esc(p.password||''):dots}
+          <div class="flex items-center gap-2 mt-1.5 flex-wrap text-xs">
+            <span style="color:var(--sub)">👤 ${esc(p.account||'—')}</span>
+            <span class="pwd-display" onclick="togglePwdShow('${id}')" title="点击切换显示/隐藏密码" style="cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:4px;background:var(--hover);transition:background .15s">
+              <span style="font-family:monospace;letter-spacing:1px;color:${isShown?'var(--accent)':'var(--sub)'}">${isShown?esc(p.password||''):dots}</span>
+              <span style="font-size:.8rem">${isShown?'🙈':'👁'}</span>
             </span>
           </div>
         </div>
         <div class="flex items-center gap-1 flex-shrink-0">
-          <button class="btn btn-xs" style="padding:.15rem .45rem;font-size:.65rem;background:var(--hover);color:var(--sub);border:none;cursor:pointer" onclick="event.stopPropagation();copyAccount('${id}')" title="复制账号">👤</button>
-          <button class="btn btn-xs" style="padding:.15rem .45rem;font-size:.65rem;background:var(--hover);color:var(--sub);border:none;cursor:pointer" onclick="event.stopPropagation();copyPwd('${id}')" title="复制密码">📋</button>
+          <button class="btn btn-xs" style="padding:.25rem .5rem;font-size:.7rem;background:var(--hover);color:var(--text);border:none;cursor:pointer;min-width:28px" onclick="event.stopPropagation();copyAccount('${id}')" title="复制账号">👤</button>
+          <button class="btn btn-xs" style="padding:.25rem .5rem;font-size:.7rem;background:var(--hover);color:var(--text);border:none;cursor:pointer;min-width:28px" onclick="event.stopPropagation();copyPwd('${id}')" title="复制密码">📋</button>
           <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delPwd('${id}')">✕</button>
         </div>
       </div>
@@ -1984,9 +1984,9 @@ function addPwd() {
     <div class="space-y-3">
       <input class="input" id="pwd-name" placeholder="名称 *（如：B站、GitHub）" autofocus>
       <input class="input" id="pwd-account" placeholder="账号 / 邮箱 / 手机号">
-      <div class="relative">
-        <input class="input" type="password" id="pwd-pass" placeholder="密码 *">
-        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:.75rem;color:var(--sub);user-select:none" onclick="var el=document.getElementById('pwd-pass');el.type=el.type==='password'?'text':'password'">👁</span>
+      <div style="position:relative">
+        <input class="input" type="password" id="pwd-pass" placeholder="密码 *" style="padding-right:40px">
+        <button type="button" onclick="var el=document.getElementById('pwd-pass');var btn=document.getElementById('pwd-eye-btn');if(el.type==='password'){el.type='text';btn.textContent='🙈'}else{el.type='password';btn.textContent='👁'}" id="pwd-eye-btn" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:1.1rem;padding:4px 6px;line-height:1" title="切换显示密码">👁</button>
       </div>
     </div>`, () => {
     const name = document.getElementById('pwd-name').value.trim();
@@ -2010,16 +2010,44 @@ function togglePwdShow(id) {
   renderPwd();
 }
 
+// Robust clipboard with fallback for all contexts
+function copyText(text, label) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function(){ toast(label||'已复制 📋'); })
+      .catch(function(){ fallbackCopy(text, label); });
+  } else {
+    fallbackCopy(text, label);
+  }
+}
+
+function fallbackCopy(text, label) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  ta.style.top = '-9999px';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try {
+    document.execCommand('copy');
+    toast(label||'已复制 📋');
+  } catch(e) {
+    toast('复制失败，请手动复制', 'error');
+  }
+  document.body.removeChild(ta);
+}
+
 function copyPwd(id) {
-  const p = S.passwords.find(x=>x.id===id);
-  if (!p) return;
-  navigator.clipboard.writeText(p.password).then(()=>toast('密码已复制 📋')).catch(()=>toast('复制失败','error'));
+  const p = S.passwords.find(function(x){return x.id===id;});
+  if (!p) { toast('找不到密码项','error'); return; }
+  copyText(p.password, '密码已复制 📋');
 }
 
 function copyAccount(id) {
-  const p = S.passwords.find(x=>x.id===id);
-  if (!p) return;
-  navigator.clipboard.writeText(p.account||'').then(()=>toast('账号已复制 📋')).catch(()=>toast('复制失败','error'));
+  const p = S.passwords.find(function(x){return x.id===id;});
+  if (!p) { toast('找不到密码项','error'); return; }
+  copyText(p.account||'', '账号已复制 📋');
 }
 
 // ==================== 10. AI LION ====================
