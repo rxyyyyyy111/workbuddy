@@ -469,7 +469,7 @@ const SUBS = {
   archive:'珍藏你的记忆与线索', diary:'写下每天的心情与故事',
   wishes:'记录每个心愿，一步步实现', warehouse:'管理你的物品库存',
   pwd:'安全管理你的账号密码',
-  spirits:'管理你的3只AI小精灵',
+  spirits:'管理你的AI小精灵',
 };
 
 function buildNav() {
@@ -2129,7 +2129,7 @@ function shuffleSpirits() {
   localStorage.setItem('wb-companionMode','1');
   var pool = [...SPIRIT_POOL];
   for (var i=pool.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=pool[i];pool[i]=pool[j];pool[j]=t;}
-  var picked = pool.slice(0,3);
+  var picked = pool.slice(0,1);
   S.spirits = picked.map(function(p){
     // Name = image filename without extension
     var name = p.img.replace(/\.(png|jpg|jpeg|gif|webp)$/i,'');
@@ -2167,14 +2167,14 @@ function renderSpirits() {
       '<h3 class="font-bold text-lg">🧚 我的精灵</h3>'+
       '<div class="flex gap-2">'+
         '<button class="btn btn-sm" style="background:'+(isOn?'var(--accent)':'var(--hover)')+';color:'+(isOn?'#fff':'var(--sub)')+';border:none;font-size:.75rem" onclick="toggleCompanionMode()">'+(isOn?'🟢 陪伴中':'⏸ 已封存')+'</button>'+
-        '<button class="btn btn-ghost btn-sm" onclick="if(confirm(\'随机换一组精灵？当前精灵的记忆将被清空。\')){shuffleSpirits();toast(\'新精灵来了！🧚\')}">🎲 换一组</button>'+
+        '<button class="btn btn-ghost btn-sm" onclick="if(confirm(\'随机换一个精灵？当前精灵的记忆将被清空。\')){shuffleSpirits();toast(\'新精灵来了！🧚\')}">🎲 换一个</button>'+
       '</div>'+
     '</div>'+
     '<p class="text-sm mb-3" style="color:var(--sub)">'+(isOn?'陪伴模式已开启：精灵会在日记和打卡中主动评论你。':'陪伴模式已封存：精灵暂时休眠，不会评论。')+'</p>'+
-    '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">'+cards+'</div>'+
+    '<div class="flex justify-center mb-4"><div style="max-width:280px;width:100%">'+cards+'</div></div>'+
     '<div class="card p-4">'+
       '<h4 class="font-bold text-sm mb-2">💬 精灵互动说明</h4>'+
-      '<p class="text-sm" style="color:var(--sub)">写完日记后，精灵会自动评论你的内容。你也可以在日记详情和打卡记录下方主动和精灵聊天。每只精灵的性格和记忆都独立封存。</p>'+
+      '<p class="text-sm" style="color:var(--sub)">写完日记后，精灵会自动评论你的内容。你也可以在日记详情和打卡记录下方主动和精灵聊天。精灵的性格和记忆会持续累积。</p>'+
     '</div>'+
   '</div>';
 }
