@@ -828,11 +828,11 @@ async function generateAISummary(force) {
   }
 
   var msgs = [
-    {role:'system', content:'你是用户的数据助手。根据过去24小时的新增记录，给出简洁的观察和提醒（≤300字）。非必要不多说。格式：纯文字、不用emoji、不用markdown。可关注：情绪变化、消费提醒、目标进度、饮食健康。如果没有值得提醒的内容，一句话带过即可。'},
+    {role:'system', content:'你是用户的数据助手。根据过去24小时的新增记录，给出简洁的观察和提醒（≤400字）。说完即止，不要截断。格式：纯文字、不用emoji、不用markdown。可关注：情绪变化、消费提醒、目标进度、饮食健康。如果没有值得提醒的内容，一句话带过即可。'},
     {role:'user', content: dataCtx}
   ];
 
-  var reply = await callAI(msgs, 300);
+  var reply = await callAI(msgs, 500);
   if (reply) {
     S.aiSummary = {text: reply, generatedAt: new Date().toISOString()};
     save('aiSummary');
