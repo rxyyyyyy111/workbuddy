@@ -447,6 +447,7 @@ const S = {
   // AI daily summary
   aiSummary: safeParse(localStorage.getItem("wb-aiSummary"), '{"text":"","generatedAt":""}'),
   lastSummaryTime: localStorage.getItem('wb-lastSummaryTime')||'',
+  aiSummaryUnlocked: localStorage.getItem('wb-aiSummaryUnlocked')==='1',
 };
 
 // Spirit character pool (5 image-based characters)
@@ -815,6 +816,7 @@ function collectNewData() {
 }
 
 async function generateAISummary(force) {
+  if (!S.aiSummaryUnlocked) return;
   if (!AI_STATE.enabled || !AI_STATE.apiKey) return;
   var dataCtx = collectNewData();
   if (!dataCtx) {
@@ -841,16 +843,28 @@ async function generateAISummary(force) {
 
 function renderAISummary() {
   var sum = S.aiSummary;
+  var unlocked = S.aiSummaryUnlocked;
   var html = '<div class="card p-4 slide-up mt-4">'+
     '<div class="flex items-center justify-between mb-2">'+
       '<h3 class="font-bold text-sm">🤖 AI 每日总结</h3>'+
       '<div class="flex items-center gap-2">'+
-        (sum&&sum.generatedAt?'<span class="text-xs" style="color:var(--sub)">'+sum.generatedAt.slice(0,16).replace('T',' ')+'</span>':'')+
-        '<button class="btn btn-xs" style="font-size:.65rem;padding:.15rem .5rem;background:var(--hover);color:var(--sub);border:none;cursor:pointer" onclick="refreshAISummary()">🔄 刷新</button>'+
+        (unlocked && sum&&sum.generatedAt?'<span class="text-xs" style="color:var(--sub)">'+sum.generatedAt.slice(0,16).replace('T',' ')+'</span>':'')+
+        (unlocked
+          ? '<button class="btn btn-xs" style="font-size:.65rem;padding:.15rem .5rem;background:var(--hover);color:var(--sub);border:none;cursor:pointer" onclick="refreshAISummary()">🔄 刷新</button>'+
+            '<button class="btn btn-xs" style="font-size:.65rem;padding:.15rem .5rem;background:#fee2e2;color:#dc2626;border:none;cursor:pointer" onclick="lockAISummary()" title="关闭并锁定">🔒 锁定</button>'
+          : '')+
       '</div>'+
     '</div>'+
     '<div id="ai-summary-content" class="text-sm" style="line-height:1.6;white-space:pre-wrap">';
-  if (!AI_STATE.enabled || !AI_STATE.apiKey) {
+  if (!unlocked) {
+    html += '<div style="text-align:center;padding:1.5rem 0">'+
+      '<div class="text-lg mb-2">🔐</div>'+
+      '<div class="text-xs mb-3" style="color:var(--sub)">此功能已锁定，输入密码启用</div>'+
+      '<div class="flex gap-1 justify-center">'+
+        '<input class="input" id="ai-unlock-pwd" type="password" placeholder="输入密码" style="width:140px;font-size:.8rem;padding:.4rem .6rem" onkeydown="if(event.key===\'Enter\')unlockAISummary()">'+
+        '<button class="btn btn-primary btn-xs" onclick="unlockAISummary()">解锁</button>'+
+      '</div></div>';
+  } else if (!AI_STATE.enabled || !AI_STATE.apiKey) {
     html += '<span style="color:var(--sub)">请先配置 AI API Key</span>';
   } else if (sum && sum.text) {
     html += esc(sum.text);
@@ -859,6 +873,27 @@ function renderAISummary() {
   }
   html += '</div></div>';
   return html;
+}
+
+function unlockAISummary() {
+  var input = document.getElementById('ai-unlock-pwd');
+  if (!input) return;
+  if (input.value === '1q23lyc45j') {
+    S.aiSummaryUnlocked = true;
+    localStorage.setItem('wb-aiSummaryUnlocked', '1');
+    renderCal();
+    toast('AI 每日总结已解锁 🤖');
+  } else {
+    toast('密码错误', 'error');
+  }
+}
+
+function lockAISummary() {
+  if (!confirm('确定要锁定 AI 每日总结吗？锁定后将不再调用 API。')) return;
+  S.aiSummaryUnlocked = false;
+  localStorage.setItem('wb-aiSummaryUnlocked', '0');
+  renderCal();
+  toast('AI 每日总结已锁定 🔐');
 }
 
 async function refreshAISummary() {
@@ -3597,11 +3632,13 @@ function boot() {
       localStorage.setItem('wb-lastSummaryTime', S.lastSummaryTime);
     }
 
-    // Auto-refresh AI summary if past midnight since last summary
-    var lastDate = S.lastSummaryTime.slice(0,10);
-    var today = fmt(new Date());
-    if (lastDate < today) {
-      setTimeout(function(){ generateAISummary(true).then(function(){ renderCal(); }); }, 2000);
+    // Auto-refresh AI summary if past midnight since last summary AND unlocked
+    if (S.aiSummaryUnlocked) {
+      var lastDate = S.lastSummaryTime.slice(0,10);
+      var today = fmt(new Date());
+      if (lastDate < today) {
+        setTimeout(function(){ generateAISummary(true).then(function(){ renderCal(); }); }, 2000);
+      }
     }
     document.documentElement.classList.toggle('dark', S.theme==='dark');
     updateThemeBtn();
