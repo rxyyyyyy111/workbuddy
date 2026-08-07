@@ -401,17 +401,15 @@ const S = {
 
   // Spirit companions
   spirits: safeParse(localStorage.getItem("wb-spirits"), '[]'),
-  spiritMemories: safeParse(localStorage.getItem("wb-spiritMemories"), '{}'),
+  spiritMemories: safeParse(localStorage.getItem("wb-spiritMemories"), '[]'),
 };
 
 // Spirit character pool (5 image-based characters)
 const SPIRIT_POOL = [
-  { personality:'毒舌懒散', img:'加菲猫.png', color:'#f97316', tone:'懒洋洋的橘猫，说话毒舌但心底柔软。最爱吐槽用户，但关键时刻一定在。"哼，随便你啦～"' },
-  { personality:'暖心可爱', img:'小可.png', color:'#f472a6', tone:'温柔甜美的小可爱，永远第一个给抱抱。说话软软的，像棉花糖一样甜。"没关系的，小可陪着你好不好～"' },
-  { personality:'活泼搞怪', img:'蛋小黄.png', color:'#fbbf24', tone:'一颗圆滚滚的蛋黄，元气满满！爱用感叹号，说话跳脱，永远在蹦跶。"哇！！！好棒好棒！！"' },
-  { personality:'高冷神秘', img:'血河小狗.png', color:'#94a3b8', tone:'来自血河的暗黑小狗，高冷寡言但意外靠谱。说话简短冷淡但直击要害。"……嗯。知道了。"' },
-  { personality:'腹黑邪恶', img:'邪恶大耳狗.png', color:'#a78bfa', tone:'表面笑嘻嘻的大耳朵狗，心里门儿清。偶尔冒出让人后背发凉的发言，但其实很护短。"（微笑）你确定要这样吗？"' },
-  { personality:'温暖治愈', img:'shi.jpg', color:'#ec4899', tone:'住在手机里的小狮子，像真人朋友一样陪着用户。自称"狮狮"，温暖自然不做作。口语化，偶尔加语气词。像发微信一样简短回复，不灌鸡汤但真心陪伴。' },
+  { personality:'毒舌懒散', img:'加菲猫.png', color:'#f97316', tone:'懒洋洋的橘猫，说话毒舌但心底柔软。最爱吐槽用户，但关键时刻一定在。自称"本喵"。' },
+  { personality:'温暖治愈', img:'shi.jpg', color:'#ec4899', tone:'住在手机里的小狮子，像真人朋友一样陪着用户。自称"狮狮"，温暖自然不做作。' },
+  { personality:'活泼搞怪', img:'蛋小黄.png', color:'#fbbf24', tone:'一颗圆滚滚的蛋黄，元气满满！自称"蛋蛋"，爱用感叹号，说话跳脱，永远在蹦跶。' },
+  { personality:'腹黑邪恶', img:'邪恶大耳狗.png', color:'#a78bfa', tone:'表面笑嘻嘻的大耳朵狗，自称"本汪"，心里门儿清。偶尔冒出让人后背发凉的吐槽。' },
 ];
 
 // Companion mode state
@@ -2159,7 +2157,7 @@ function renderSpirits() {
   var isOn = S.companionMode;
   var cur = S.spirits[0];
   if (!cur) return;
-  var memCount = (S.spiritMemories[cur.id]||[]).length;
+  var memCount = (S.spiritMemories||[]).length;
 
   // Current spirit card
   var curCard = '<div class="card p-5 slide-up text-center mb-4" style="border:2px solid '+cur.color+'">'+
@@ -2237,12 +2235,11 @@ function renderSpiritComments(parentId, contextTitle, contextContent) {
       '<div class="chat-msg assistant" style="max-width:80%;font-size:.75rem;margin:0">'+esc(m.content)+'</div></div></div>';
   }).join('');
 
-  var avatars = S.spirits.map(function(s){return '<img src="./'+s.img+'" style="width:20px;height:20px;border-radius:50%;object-fit:cover" title="'+esc(s.name)+'" alt="">';}).join('');
+  var avatar = S.spirits.length ? '<img src="./'+S.spirits[0].img+'" style="width:20px;height:20px;border-radius:50%;object-fit:cover" title="'+esc(S.spirits[0].name)+'" alt="">' : '';
 
   return '<div class="mt-4 pt-3" style="border-top:1px solid var(--border)">'+
     '<div class="flex items-center gap-2 mb-2">'+
-      '<span class="text-xs font-bold" style="color:var(--sub)">🧚 精灵评论区</span>'+
-      '<span class="text-xs flex items-center gap-0.5" style="opacity:.8">'+avatars+'</span>'+
+      '<span class="text-xs font-bold" style="color:var(--sub)">🧚 '+esc(S.spirits[0]?S.spirits[0].name:'精灵')+' 评论区</span>'+
     '</div>'+
     '<div class="mb-2 max-h-64 overflow-y-auto space-y-1" id="spirit-msgs-'+parentId+'">'+(msgsHTML||'<p class="text-xs py-2" style="color:var(--sub);opacity:.6">精灵们在等你说话～</p>')+'</div>'+
     '<div class="flex gap-1.5">'+
@@ -2251,7 +2248,7 @@ function renderSpiritComments(parentId, contextTitle, contextContent) {
     '</div></div>';
 }
 
-// Auto-comment: spirits comment on diary content automatically
+// Auto-comment: spirit comments on diary content automatically
 async function autoSpiritComment(parentId, contextTitle, contextContent) {
   if (!S.companionMode) return;
   ensureSpirits();
@@ -2259,37 +2256,26 @@ async function autoSpiritComment(parentId, contextTitle, contextContent) {
 
   var key = 'spiritChat_'+parentId;
   var chat = safeParse(localStorage.getItem('wb-'+key), '[]');
+  var sharedMems = (S.spiritMemories||[]).slice(-10);
+  var memCtx = sharedMems.length ? '\n\n互动记忆：\n'+sharedMems.map(function(m){return m.spiritName+': '+m.content.slice(0,100);}).join('\n') : '';
 
-  var promises = S.spirits.map(function(s){
-    var context = '你是"'+s.name+'"，'+s.tone+
-      '\n\n用户刚写了一篇日记/打卡：'+contextTitle+
-      '\n内容：'+contextContent.slice(0,500)+
-      '\n\n请用你的性格口吻主动评论一下这篇内容。简短（1-3句话），口语化，自然不做作。不要AI腔。不要问问题，直接给反应。';
+  var s = S.spirits[0];
+  var context = '你是"'+s.name+'"，'+s.tone+
+    '\n\n用户刚写了一篇日记/打卡：'+contextTitle+
+    '\n内容：'+contextContent.slice(0,500)+
+    '\n\n请用你的性格口吻主动评论。简短（1-3句话），口语化，不要AI腔。';
 
-    var mems = (S.spiritMemories[s.id]||[]).slice(-6);
-    var memCtx = mems.length ? '\n\n你和用户之前的互动：\n'+mems.map(function(m){return m.role+': '+m.content.slice(0,100);}).join('\n') : '';
-
-    var msgs = [
-      {role:'system', content:context+memCtx},
-      {role:'user', content:'请评论这篇内容：'+contextContent.slice(0,300)}
-    ];
-    return callAI(msgs, 100).then(function(reply){
-      return {spiritId:s.id, content:reply||getCannedReply(s,contextContent)};
-    });
-  });
-
-  var replies = await Promise.all(promises);
-  replies.forEach(function(r){
-    if (r.content) {
-      chat.push({role:'assistant', spiritId:r.spiritId, content:r.content, time:Date.now()});
-      if (!S.spiritMemories[r.spiritId]) S.spiritMemories[r.spiritId] = [];
-      S.spiritMemories[r.spiritId].push({parentId:parentId, date:fmt(new Date()), role:'user', content:'（用户写了：'+contextTitle+'）'});
-      S.spiritMemories[r.spiritId].push({parentId:parentId, date:fmt(new Date()), role:'assistant', content:r.content});
-    }
-  });
-  save('spiritMemories');
+  var msgs = [
+    {role:'system', content:context+memCtx},
+    {role:'user', content:'请评论：'+contextContent.slice(0,300)}
+  ];
+  var reply = await callAI(msgs, 100);
+  if (reply) {
+    chat.push({role:'assistant', spiritId:s.id, content:reply, time:Date.now()});
+    S.spiritMemories.push({spiritName:s.name, date:fmt(new Date()), role:'assistant', content:reply});
+    save('spiritMemories');
+  }
   localStorage.setItem('wb-'+key, JSON.stringify(chat));
-  // Refresh if the element exists
   refreshSpiritMsgs(parentId, chat);
 }
 
@@ -2307,47 +2293,35 @@ async function sendToSpirits(parentId, contextTitle, contextContent) {
   localStorage.setItem('wb-'+key, JSON.stringify(chat));
   refreshSpiritMsgs(parentId, chat);
 
+  var s = S.spirits[0];
   if (!AI_STATE.apiKey || !AI_STATE.enabled) {
-    S.spirits.forEach(function(s){
-      var reply = getCannedReply(s, text);
-      chat.push({role:'assistant', spiritId:s.id, content:reply, time:Date.now()});
-      if (!S.spiritMemories[s.id]) S.spiritMemories[s.id] = [];
-      S.spiritMemories[s.id].push({parentId:parentId, date:fmt(new Date()), role:'user', content:text});
-      S.spiritMemories[s.id].push({parentId:parentId, date:fmt(new Date()), role:'assistant', content:reply});
-    });
+    var reply = getCannedReply(s, text);
+    chat.push({role:'assistant', spiritId:s.id, content:reply, time:Date.now()});
+    S.spiritMemories.push({spiritName:s.name, date:fmt(new Date()), role:'user', content:text});
+    S.spiritMemories.push({spiritName:s.name, date:fmt(new Date()), role:'assistant', content:reply});
     save('spiritMemories');
     localStorage.setItem('wb-'+key, JSON.stringify(chat));
     refreshSpiritMsgs(parentId, chat);
     return;
   }
 
-  var promises = S.spirits.map(function(s){
-    var context = '你是"'+s.name+'"，'+s.tone+
-      '\n\n上下文：'+contextTitle+'\n内容摘要：'+contextContent.slice(0,300)+
-      '\n\n用户对你说：'+text+
-      '\n\n用你的性格口吻自然回复。简短（1-3句话），口语化。';
+  var sharedMems = (S.spiritMemories||[]).slice(-10);
+  var memCtx = sharedMems.length ? '\n\n互动记忆：\n'+sharedMems.map(function(m){return m.spiritName+': '+m.content.slice(0,100);}).join('\n') : '';
 
-    var mems = (S.spiritMemories[s.id]||[]).slice(-10);
-    var memCtx = mems.length ? '\n\n互动记忆：\n'+mems.map(function(m){return m.role+': '+m.content.slice(0,100);}).join('\n') : '';
+  var context = '你是"'+s.name+'"，'+s.tone+
+    '\n\n上下文：'+contextTitle+'\n内容摘要：'+contextContent.slice(0,300)+
+    '\n\n用你的性格口吻自然回复。简短（1-3句话），口语化。';
 
-    var msgs = [
-      {role:'system', content:context+memCtx},
-      {role:'user', content:text}
-    ];
-    return callAI(msgs, 120).then(function(reply){
-      return {spiritId:s.id, content:reply||getCannedReply(s,text)};
-    });
-  });
-
-  var replies = await Promise.all(promises);
-  replies.forEach(function(r){
-    if (r.content) {
-      chat.push({role:'assistant', spiritId:r.spiritId, content:r.content, time:Date.now()});
-      if (!S.spiritMemories[r.spiritId]) S.spiritMemories[r.spiritId] = [];
-      S.spiritMemories[r.spiritId].push({parentId:parentId, date:fmt(new Date()), role:'user', content:text});
-      S.spiritMemories[r.spiritId].push({parentId:parentId, date:fmt(new Date()), role:'assistant', content:r.content});
-    }
-  });
+  var msgs = [
+    {role:'system', content:context+memCtx},
+    {role:'user', content:text}
+  ];
+  var reply = await callAI(msgs, 120);
+  if (reply) {
+    chat.push({role:'assistant', spiritId:s.id, content:reply, time:Date.now()});
+    S.spiritMemories.push({spiritName:s.name, date:fmt(new Date()), role:'user', content:text});
+    S.spiritMemories.push({spiritName:s.name, date:fmt(new Date()), role:'assistant', content:reply});
+  }
   save('spiritMemories');
   localStorage.setItem('wb-'+key, JSON.stringify(chat));
   refreshSpiritMsgs(parentId, chat);
@@ -2373,9 +2347,8 @@ function refreshSpiritMsgs(parentId, chat) {
 function getCannedReply(spirit, userMsg) {
   var replies = {
     '毒舌懒散': ['啧。', '行吧，勉强看看。', '（打哈欠）还行吧。'],
-    '暖心可爱': ['抱抱～', '你好棒呀！', '小可觉得你超厉害的～'],
+    '温暖治愈': ['抱抱你～', '有狮狮在呢。', '今天也辛苦了。'],
     '活泼搞怪': ['哇塞！！！', '太有意思了哈哈哈！', '冲鸭冲鸭！！'],
-    '高冷神秘': ['嗯。', '……可以。', '（微微点头）'],
     '腹黑邪恶': ['（微笑）有意思。', '哦？是这样啊～', '你确定吗？（歪头）'],
   };
   var pool = replies[spirit.personality]||['嗯嗯。','不错。','继续。'];
