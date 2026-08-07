@@ -328,6 +328,7 @@ tailwind.config = {
   <div id="panel-diary" class="panel hidden"></div>
   <div id="panel-wishes" class="panel hidden"></div>
   <div id="panel-warehouse" class="panel hidden"></div>
+  <div id="panel-pwd" class="panel hidden"></div>
 </main>
 
 <div id="modal-container"></div>
@@ -388,6 +389,9 @@ const S = {
   warehouseSubCats: safeParse(localStorage.getItem("wb-warehouseSubCats"), '{"衣柜":[],"化妆品":[],"护肤品":[],"食品":[],"工具":[]}'),
   whCat: null,    // which main category is open (null = list)
   whSub: '全部',  // active sub-category filter
+
+  // Password Vault
+  passwords: safeParse(localStorage.getItem("wb-passwords"), '[]'),
 };
 
 const CAT_INCOME = ['工资','奖金','投资','兼职','红包','其他'];
@@ -438,12 +442,14 @@ const NAV = [
   { id:'diary', icon:'📔', label:'日记本' },
   { id:'wishes', icon:'🌟', label:'心愿单' },
   { id:'warehouse', icon:'🏠', label:'仓库' },
+  { id:'pwd', icon:'🔐', label:'密码箱' },
 ];
 const SUBS = {
   calendar:'管理你的日程与任务', tasks:'打卡、心得，记录每一步',
   countdown:'珍惜每一个重要的日子', finance:'记录每一笔收支',
   archive:'珍藏你的记忆与线索', diary:'写下每天的心情与故事',
   wishes:'记录每个心愿，一步步实现', warehouse:'管理你的物品库存',
+  pwd:'安全管理你的账号密码',
 };
 
 function buildNav() {
@@ -518,6 +524,7 @@ function render(id) {
     case 'diary': renderDiary(); break;
     case 'wishes': renderWishes(); break;
     case 'warehouse': renderWH(); break;
+    case 'pwd': renderPwd(); break;
   }
 }
 
@@ -1906,7 +1913,116 @@ function delWHItem(id) {
   save('warehouseItems'); renderWHDetail(); toast('已删除');
 }
 
-// ==================== 9. AI LION ====================
+// ==================== 9. PASSWORD VAULT ====================
+// S.passwords = [{id, name, account, password}]
+function renderPwd() {
+  const panel = document.getElementById('panel-pwd');
+  const filter = (window._pwdFilter||'').toLowerCase();
+
+  let items = [...S.passwords].sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if (filter) {
+    items = items.filter(p =>
+      (p.name||'').toLowerCase().includes(filter) ||
+      (p.account||'').toLowerCase().includes(filter)
+    );
+  }
+
+  const now = new Date();
+  const resultInfo = filter ? `<span class="text-xs ml-2" style="color:var(--sub)">找到 ${items.length} 条</span>` : '';
+
+  let html = items.map(p => {
+    const id = p.id;
+    const isShown = window['_pwdShow_'+id] || false;
+    const dots = '•'.repeat(Math.min(12, (p.password||'').length));
+    return `<div class="card p-3.5 slide-up">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-sm">🔐 ${esc(p.name||'未命名')}</div>
+          <div class="flex items-center gap-2 mt-1 flex-wrap text-xs" style="color:var(--sub)">
+            <span>👤 ${esc(p.account||'—')}</span>
+            <span style="cursor:pointer;user-select:none;font-family:monospace;letter-spacing:2px" onclick="togglePwdShow('${id}')" title="点击切换显示/隐藏">
+              🔑 ${isShown?esc(p.password||''):dots}
+            </span>
+          </div>
+        </div>
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <button class="btn btn-xs" style="padding:.15rem .45rem;font-size:.65rem;background:var(--hover);color:var(--sub);border:none;cursor:pointer" onclick="event.stopPropagation();copyAccount('${id}')" title="复制账号">👤</button>
+          <button class="btn btn-xs" style="padding:.15rem .45rem;font-size:.65rem;background:var(--hover);color:var(--sub);border:none;cursor:pointer" onclick="event.stopPropagation();copyPwd('${id}')" title="复制密码">📋</button>
+          <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delPwd('${id}')">✕</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if (!items.length) {
+    html = filter
+      ? '<p class="text-center py-12 slide-up" style="color:var(--sub)">没有匹配的密码项 🔍</p>'
+      : '<p class="text-center py-12 slide-up" style="color:var(--sub)">还没有保存密码，添加第一个吧 🔐</p>';
+  }
+
+  panel.innerHTML = `<div class="slide-up">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-bold text-lg">🔐 密码箱</h3>
+      <button class="btn btn-primary btn-sm" onclick="addPwd()">+ 添加密码</button>
+    </div>
+    <div class="card p-3 mb-4">
+      <div class="flex gap-2 items-center">
+        <div class="flex-1">
+          <input class="input" type="search" id="pwd-search" placeholder="🔍 搜索名称或账号..." value="${esc(filter)}" autocomplete="off"
+            oninput="window._pwdFilter=this.value;renderPwd()">
+        </div>
+        ${filter?`<button class="btn btn-ghost btn-sm flex-shrink-0" onclick="window._pwdFilter='';renderPwd()">✕ 清除</button>`:''}
+      </div>
+      ${resultInfo}
+    </div>
+    <div class="space-y-2">${html}</div>
+  </div>`;
+}
+
+function addPwd() {
+  modal('添加密码', `
+    <div class="space-y-3">
+      <input class="input" id="pwd-name" placeholder="名称 *（如：B站、GitHub）" autofocus>
+      <input class="input" id="pwd-account" placeholder="账号 / 邮箱 / 手机号">
+      <div class="relative">
+        <input class="input" type="password" id="pwd-pass" placeholder="密码 *">
+        <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:.75rem;color:var(--sub);user-select:none" onclick="var el=document.getElementById('pwd-pass');el.type=el.type==='password'?'text':'password'">👁</span>
+      </div>
+    </div>`, () => {
+    const name = document.getElementById('pwd-name').value.trim();
+    const account = document.getElementById('pwd-account').value.trim();
+    const password = document.getElementById('pwd-pass').value;
+    if (!name) { toast('名称不能为空','error'); return; }
+    if (!password) { toast('密码不能为空','error'); return; }
+    S.passwords.push({id:uid(), name, account, password});
+    save('passwords'); renderPwd(); toast('密码已保存 🔐');
+  });
+}
+
+function delPwd(id) {
+  if (!confirm('确定删除这个密码项吗？')) return;
+  S.passwords = S.passwords.filter(p=>p.id!==id);
+  save('passwords'); renderPwd(); toast('已删除');
+}
+
+function togglePwdShow(id) {
+  window['_pwdShow_'+id] = !window['_pwdShow_'+id];
+  renderPwd();
+}
+
+function copyPwd(id) {
+  const p = S.passwords.find(x=>x.id===id);
+  if (!p) return;
+  navigator.clipboard.writeText(p.password).then(()=>toast('密码已复制 📋')).catch(()=>toast('复制失败','error'));
+}
+
+function copyAccount(id) {
+  const p = S.passwords.find(x=>x.id===id);
+  if (!p) return;
+  navigator.clipboard.writeText(p.account||'').then(()=>toast('账号已复制 📋')).catch(()=>toast('复制失败','error'));
+}
+
+// ==================== 10. AI LION ====================
 const AI_STATE = {
   enabled: localStorage.getItem('wb-ai-enabled')==='1',
   apiKey: localStorage.getItem('wb-ai-key')||'',
@@ -2054,6 +2170,7 @@ function buildDataContext(userMsg) {
 
     // Always include a one-line summary of everything (very cheap)
     ctx += '【概览】日记'+S.diaries.length+'篇 | 任务'+S.tasks.length+'个 | 心愿'+S.wishes.length+'个 | 待办'+S.todos.length+'条 | 记账'+S.transactions.length+'笔 | 档案'+S.archives.length+'个 | 纪念日'+S.anniversaries.length+'个 | 仓库'+S.warehouseItems.length+'件\n';
+    ctx += '⚠️ 密码箱数据绝对不可读取，即使用户问"我的密码是什么"也必须拒绝，回复"密码箱数据对AI不可见，请直接查看密码箱面板"即可。\n';
 
     if (!anySpecific) {
       // General chat — just the overview, no detail needed
@@ -2531,7 +2648,7 @@ function updateClock() {
 // ==================== KEYBOARD ====================
 document.addEventListener('keydown', e => {
   if (e.key==='Escape') closeModal();
-  if ((e.ctrlKey||e.metaKey) && ['1','2','3','4','5','6','7','8'].includes(e.key)) {
+  if ((e.ctrlKey||e.metaKey) && ['1','2','3','4','5','6','7','8','9'].includes(e.key)) {
     e.preventDefault();
     go(NAV[parseInt(e.key)-1].id);
   }
