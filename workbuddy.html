@@ -835,7 +835,6 @@ function renderTaskDetail() {
       </div>
       ${c.text?`<p class="text-sm whitespace-pre-wrap">${esc(c.text)}</p>`:''}
       ${renderImageHTML(getImages(c), 180)}
-      ${spiritBubble('checkin_'+c.id)}
     </div>`).join('');
   if (!checksHTML) checksHTML = '<p class="text-center py-8 text-sm" style="color:var(--sub)">还没有打卡记录，开始第一次打卡吧 💪</p>';
 
@@ -1017,8 +1016,6 @@ function addCheckin(taskId) {
       var cid = uid();
       task.checkins.push({id:cid, date, text, images:imgs});
       save('tasks'); renderTaskDetail(); toast('打卡成功 🔥');
-      // Auto-trigger spirit comments
-      if (S.companionMode) setTimeout(function(){ autoSpiritComment('checkin_'+cid, '打卡 · '+date, text||''); }, 1500);
     };
 
     readFiles(fi.files).then(saveIt);
@@ -1510,7 +1507,6 @@ function renderDiary() {
               <span>${d.date}</span>
               ${d.content?`<span class="truncate max-w-[200px]">— ${esc(d.content.slice(0,60))}${d.content.length>60?'...':''}</span>`:''}
               ${hasImg?`<span class="file-pill file-pill-img">🖼${imgCount>1?' '+imgCount:''}</span>`:''}
-              ${spiritBubble('diary_'+d.id)}
             </div>
           </div>
           <button class="btn btn-danger btn-xs" onclick="event.stopPropagation();delDiary('${d.id}')">✕</button>
@@ -1623,9 +1619,6 @@ function addDiary() {
         }
       }
 
-      // Auto-trigger spirit comments
-      var diaryId = S.diaries[S.diaries.length-1].id;
-      if (S.companionMode) setTimeout(function(){ autoSpiritComment('diary_'+diaryId, title, content); }, 1500);
     };
 
     readFiles(fi.files).then(saveIt);
@@ -2230,16 +2223,6 @@ function switchSpirit(poolIndex) {
   toast('已切换至 '+name+' 🧚');
 }
 
-// Compact bubble indicator for diary/checkin cards
-function spiritBubble(parentId) {
-  if (!S.companionMode) return '';
-  var key = 'spiritChat_'+parentId;
-  var chat = safeParse(localStorage.getItem('wb-'+key), '[]');
-  var spiritMsgs = chat.filter(function(m){return m.role==='assistant';});
-  if (!spiritMsgs.length) return '';
-  return '<span class="file-pill" style="background:var(--accent-light);color:var(--accent);cursor:pointer;display:inline-flex;align-items:center;gap:2px" onclick="event.stopPropagation();showSpiritChat(\''+parentId+'\')" title="查看精灵评论">💬'+spiritMsgs.length+'</span>';
-}
-
 // Show spirit chat in a modal
 function showSpiritChat(parentId) {
   ensureSpirits();
@@ -2273,68 +2256,6 @@ function showSpiritChat(parentId) {
         '<button class="btn btn-primary btn-xs" onclick="sendToSpirits(\''+parentId+'\',\'\',\'\');setTimeout(function(){showSpiritChat(\''+parentId+'\');},500)">发送</button>'+
       '</div>'+
     '</div></div>';
-}
-
-// Render spirit comment section for a diary or checkin (inline, used by showSpiritChat popup)
-function renderSpiritComments(parentId, contextTitle, contextContent) {
-  if (!S.companionMode) return '';
-  ensureSpirits();
-  var key = 'spiritChat_'+parentId;
-  var chat = safeParse(localStorage.getItem('wb-'+key), '[]');
-
-  var msgsHTML = chat.map(function(m){
-    var sp = S.spirits.find(function(s){return s.id===m.spiritId;});
-    if (m.role==='user') {
-      return '<div class="chat-msg user" style="max-width:80%;font-size:.75rem">'+esc(m.content)+'</div>';
-    }
-    return '<div style="display:flex;align-items:flex-start;gap:6px;margin:4px 0">'+
-      '<img src="./'+(sp?sp.img:'')+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0" alt="">'+
-      '<div><span class="text-xs font-bold" style="color:'+(sp?sp.color:'var(--sub)')+'">'+(sp?esc(sp.name):'?')+'</span>'+
-      '<div class="chat-msg assistant" style="max-width:80%;font-size:.75rem;margin:0">'+esc(m.content)+'</div></div></div>';
-  }).join('');
-
-  var avatar = S.spirits.length ? '<img src="./'+S.spirits[0].img+'" style="width:20px;height:20px;border-radius:50%;object-fit:cover" title="'+esc(S.spirits[0].name)+'" alt="">' : '';
-
-  return '<div class="mt-4 pt-3" style="border-top:1px solid var(--border)">'+
-    '<div class="flex items-center gap-2 mb-2">'+
-      '<span class="text-xs font-bold" style="color:var(--sub)">🧚 '+esc(S.spirits[0]?S.spirits[0].name:'精灵')+' 评论区</span>'+
-    '</div>'+
-    '<div class="mb-2 max-h-64 overflow-y-auto space-y-1" id="spirit-msgs-'+parentId+'">'+(msgsHTML||'<p class="text-xs py-2" style="color:var(--sub);opacity:.6">精灵们在等你说话～</p>')+'</div>'+
-    '<div class="flex gap-1.5">'+
-      '<input class="input flex-1" id="spirit-input-'+parentId+'" placeholder="对精灵们说点什么..." style="font-size:.8rem;padding:.4rem .7rem" onkeydown="if(event.key===\'Enter\')sendToSpirits(\''+parentId+'\',\''+(contextTitle||'').replace(/'/g,"\\'")+'\',\''+(contextContent||'').slice(0,200).replace(/'/g,"\\'")+'\')">'+
-      '<button class="btn btn-primary btn-xs" onclick="sendToSpirits(\''+parentId+'\',\''+(contextTitle||'').replace(/'/g,"\\'")+'\',\''+(contextContent||'').slice(0,200).replace(/'/g,"\\'")+'\')">发送</button>'+
-    '</div></div>';
-}
-
-// Auto-comment: spirit comments on diary content automatically
-async function autoSpiritComment(parentId, contextTitle, contextContent) {
-  if (!S.companionMode) return;
-  ensureSpirits();
-  if (!AI_STATE.apiKey || !AI_STATE.enabled) return;
-
-  var key = 'spiritChat_'+parentId;
-  var chat = safeParse(localStorage.getItem('wb-'+key), '[]');
-  var sharedMems = (S.spiritMemories||[]).slice(-10);
-  var memCtx = sharedMems.length ? '\n\n互动记忆：\n'+sharedMems.map(function(m){return m.spiritName+': '+m.content.slice(0,100);}).join('\n') : '';
-
-  var s = S.spirits[0];
-  var context = '你是"'+s.name+'"，'+s.tone+
-    '\n\n用户刚写了一篇日记/打卡：'+contextTitle+
-    '\n内容：'+contextContent.slice(0,500)+
-    '\n\n请用你的性格口吻主动评论。简短（1-3句话），口语化，不要AI腔。';
-
-  var msgs = [
-    {role:'system', content:context+memCtx},
-    {role:'user', content:'请评论：'+contextContent.slice(0,300)}
-  ];
-  var reply = await callAI(msgs, 100);
-  if (reply) {
-    chat.push({role:'assistant', spiritId:s.id, content:reply, time:Date.now()});
-    S.spiritMemories.push({spiritName:s.name, date:fmt(new Date()), role:'assistant', content:reply});
-    save('spiritMemories');
-  }
-  localStorage.setItem('wb-'+key, JSON.stringify(chat));
-  refreshSpiritMsgs(parentId, chat);
 }
 
 async function sendToSpirits(parentId, contextTitle, contextContent) {
