@@ -2196,10 +2196,7 @@ function renderSpirits() {
   panel.innerHTML = '<div class="slide-up">'+
     '<div class="flex items-center justify-between mb-4">'+
       '<h3 class="font-bold text-lg">🧚 我的精灵</h3>'+
-      '<div class="flex gap-2">'+
-        '<button class="btn btn-sm" style="background:'+(isOn?'var(--accent)':'var(--hover)')+';color:'+(isOn?'#fff':'var(--sub)')+';border:none;font-size:.75rem" onclick="toggleCompanionMode()">'+(isOn?'🟢 陪伴中':'⏸ 已封存')+'</button>'+
-        '<button class="btn btn-ghost btn-sm" onclick="if(confirm(\'随机换一个精灵？当前精灵的记忆将被清空。\')){shuffleSpirits();renderSpirits();renderLion();toast(\'新精灵来了！🧚\')}">🎲 随机</button>'+
-      '</div>'+
+      '<button class="btn btn-sm" style="background:'+(isOn?'var(--accent)':'var(--hover)')+';color:'+(isOn?'#fff':'var(--sub)')+';border:none;font-size:.75rem" onclick="toggleCompanionMode()">'+(isOn?'🟢 陪伴中':'⏸ 已封存')+'</button>'+
     '</div>'+
     '<p class="text-sm mb-3" style="color:var(--sub)">'+(isOn?'陪伴模式已开启：精灵会在日记和打卡中主动评论你。右下角浮动头像同步为当前精灵。':'陪伴模式已封存：精灵暂时休眠，不会评论。')+'</p>'+
     curCard+
