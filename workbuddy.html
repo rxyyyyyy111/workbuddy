@@ -2434,11 +2434,11 @@ function openChat() {
   // Shrink card from bottom when keyboard opens (top stays fixed)
   chatInput.addEventListener('focus', function() {
     var box = document.getElementById('chat-box-el');
-    if (box) { box.style.marginBottom = '40vh'; box.style.transition = 'margin-bottom .3s ease'; }
+    if (box) { box.style.marginBottom = '40vh'; box.style.transition = 'margin-bottom .25s ease'; }
   });
   chatInput.addEventListener('blur', function() {
     var box = document.getElementById('chat-box-el');
-    if (box) box.style.marginBottom = '';
+    if (box) { box.style.marginBottom = '1.5rem'; box.style.transition = 'margin-bottom .15s ease'; }
   });
 
   // Greeting if empty
