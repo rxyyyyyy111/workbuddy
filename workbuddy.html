@@ -2191,7 +2191,7 @@ function renderSpirits() {
   '</div>';
 
   // Gallery: all 5 spirits
-  var gallery = '<h4 class="font-bold text-sm mb-3">📖 精灵图鉴</h4><div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">';
+  var gallery = '<h4 class="font-bold text-sm mb-3">📖 精灵图鉴</h4><div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">';
   SPIRIT_POOL.forEach(function(p, i){
     var pName = p.img.replace(/\.(png|jpg|jpeg|gif|webp)$/i,'');
     var isActive = cur.name === pName;
